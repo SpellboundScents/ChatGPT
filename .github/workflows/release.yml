@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v1.0.0'
-  workflow_dispatch: {} # allows manual runs for testing (see note below)
+  workflow_dispatch: {}       # allow manual runs (useful for testing)
 
 jobs:
   build:
@@ -19,33 +19,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'   # uses pnpm-lock.yaml for cache key
+          cache: 'pnpm'
 
-      # Robust pnpm setup (either path works; having both is fine)
-      - name: Enable corepack
+      # --- pnpm setup (Corepack + fallback) ---
+      - name: Enable Corepack
         run: corepack enable
 
-      # Pin (or float) the pnpm version you want, then activate it.
-      # You can use @latest, but pinning is more reproducible.
+      # Choose ONE: pin a version for reproducibility
       - name: Activate pnpm via Corepack
         run: corepack prepare pnpm@9.7.1 --activate
 
-      # Optional but useful while debugging
-      - name: Verify pnpm
-        run: |
-          which pnpm
-          pnpm --version
-
-      - name: Prepare pnpm via corepack (activates latest stable)
-        run: corepack prepare pnpm@latest --activate
-
-      # Fallback in case corepack isn't available (harmless if it is)
+      # Fallback (harmless if pnpm already exists)
       - name: Install pnpm (fallback)
         run: npm install -g pnpm
 
       - name: Verify pnpm
         run: |
-          which pnpm || true
+          which pnpm
           pnpm --version
 
       - name: Install JS deps
@@ -81,9 +71,12 @@ jobs:
         # If @tauri-apps/cli is in devDependencies, you can use:
         # run: pnpm tauri build
 
+      # Only create a Release when running from a tag
       - name: Create GitHub Release and upload artifacts
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: |
             src-tauri/target/release/bundle/**/*
             src-tauri/target/release/latest.json
