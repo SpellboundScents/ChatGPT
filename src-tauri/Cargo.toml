@@ -1,17 +1,17 @@
 [package]
 name = "chatgpt"
-version = "0.0.0"
-authors = ["lencx <cxin1314@gmail.com>"]
+version = "1.0.0"
+authors = ["chirv <inbox@spellboundscentswax.com>"]
 description = "ChatGPT Desktop Application"
-repository = "https://github.com/lencx/ChatGPT"
-license = "MIT"
-edition = "2021"
-rust-version = "1.57"
+repository = "https://github.com/SpellboundScents/ChatGPT"
+license = "Apache-2.0"
+edition = "2025"
+rust-version = "1.89.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = {version = "1.2.1", features = [] }
+tauri-build = {version = "1.6.3", features = [] }
 
 [dependencies]
 anyhow = "1.0.66"
@@ -27,7 +27,7 @@ dark-light = "1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23.0", features = ["macros"] }
 tauri-plugin-positioner = { version = "1.0.4", features = ["system-tray"] }
-tauri = { version = "1.2.3", features = ["api-all", "devtools", "global-shortcut", "system-tray", "updater"] }
+tauri = { version = "1.6.3", features = ["api-all", "devtools", "global-shortcut", "system-tray", "updater"] }
 [dependencies.tauri-plugin-log]
 git = "https://github.com/lencx/tauri-plugin-log"
 branch = "dev"
