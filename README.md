@@ -42,12 +42,13 @@ So far, the following changes have been made:
 - ⏳ Improve build workflows for Windows, macOS, and Linux.  
 - ⏳ Refresh app branding & assets to distinguish from upstream.  
 - ⏳ Continue squashing UI bugs
+- ⏳ Speed Up Loading Times
 
 ---
 
 ## 📦 Installation
 
-⚠️ **Note:** No releases are published yet. Once the first release is published from this fork, installers (`.msi`, `.dmg`, `.AppImage`, `.deb`, etc.) will be available here under [Releases](https://github.com/SpellboundScents/ChatGPT/releases).
+Releases available under [Releases](https://github.com/SpellboundScents/ChatGPT/releases). Choose your installer, and install accordingly.
 
 ---
 
@@ -56,20 +57,42 @@ So far, the following changes have been made:
 ### Prerequisites
 - [Rust](https://www.rust-lang.org/)  
 - [Node.js](https://nodejs.org/)  
-- [Yarn](https://yarnpkg.com/)  
+- [pnpm (v9 or newer)](https://pnpm.io/)
+- [Tauri dependencies for your system](https://tauri.app/v1/guides/getting-started/prerequisites)
+  - Linux: [libgtk-3-dev], [libwebkit2gtk-4.0-dev], [libayatana-appindicator3-dev], [librsvg2-dev]
+  - macOS: Xcode + Command Line Tools
+  - Windows: Visual Studio with C++ build tools
 
-### Run Locally
+### 🚀 Run Locally
 ```bash
-git clone https://github.com/YOUR_USER/YOUR_REPO.git
+git clone https://github.com/SpellboundScents/ChatGPT.git
 cd ChatGPT
-yarn
-yarn dev
+```
+```bash
+pnpm install
+```
+Start front-end in dev mode:
+```bash
+pnpm dev:fe
+```
+Run Tauri app in dev mode:
+```bash
+pnpm dev
 ```
 
-### Build
+### 🛠️ Build
+
+Build the front-end only:
 ```bash
-yarn build
-# Bundles are created in: src-tauri/target/release/bundle
+pnpm build:fe
+```
+Build the full Tauri app (all platforms):
+```bash
+pnpm build
+```
+Build with signing (requires TAURI_PRIVATE_KEY + TAURI_KEY_PASSWORD):
+```bash
+pnpm tauri build
 ```
 
 ---
