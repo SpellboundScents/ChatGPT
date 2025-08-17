@@ -82,3 +82,68 @@
     -webkit-transform:translateZ(0);backface-visibility:hidden
   }
 }
+/* Spans-as-lines inside code blocks (both the PRE variant and DIV+CODE variant) */
+[data-nick-fix] pre > code > span,
+[data-nick-fix] code.whitespace-pre\! > span{
+  display:block !important;
+  margin:0 !important;
+  padding:0 !important;
+  line-height:1.35 !important; /* match your base */
+}
+
+/* If the exporter injected line numbers into spans, neutralize width/padding */
+[data-nick-fix] pre > code > span [class*="line-number"],
+[data-nick-fix] code.whitespace-pre\! > span [class*="line-number"]{
+  display:inline !important; margin:0 !important; padding:0 !important;
+}
+/* Inline code (not inside PRE) should wrap normally */
+[data-nick-fix] :not(pre) > code {
+  white-space:normal !important;
+  word-break:break-word !important;
+  overflow:visible !important;
+  padding:.1em .25em !important;
+  border-radius:.2em;
+}
+/* Monospace + subtle background for block code */
+[data-nick-fix] pre, [data-nick-fix] pre > code, 
+[data-nick-fix] div.overflow-y-auto:has(> code.whitespace-pre\!) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  background: color-mix(in srgb, currentColor 6%, transparent) !important;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
+  border-radius: .5rem !important;
+}
+/* Any ancestor chain between your scope root and a PRE must not clip */
+[data-nick-fix] :where(.markdown, .prose) :where(*) {
+  -webkit-mask-image:none !important;
+          mask-image:none !important;
+}
+[data-nick-fix] :where(.markdown, .prose) :where(*):has(pre){
+  overflow:visible !important; max-height:none !important;
+  contain:initial !important; transform:none !important; filter:none !important; backdrop-filter:none !important;
+}
+<script>
+(() => {
+  const scope = document.querySelector('[data-nick-fix]') || document;
+  // Convert <div class="overflow-y-auto"><code.whitespace-pre!>…</code></div> → <pre><code>…</code></pre>
+  scope.querySelectorAll('div.overflow-y-auto > code.whitespace-pre\\!').forEach(code => {
+    const pre = document.createElement('pre');
+    const newCode = document.createElement('code');
+    // Preserve language class(es)
+    code.classList.forEach(c => { if (c.startsWith('language-')) newCode.classList.add(c); });
+    newCode.textContent = code.textContent; // dump raw text; removes span wrappers safely
+    pre.appendChild(newCode);
+    const div = code.parentElement;
+    div.replaceWith(pre);
+  });
+
+  // Optional: unwrap span-wrapped lines inside <pre><code> while keeping text
+  scope.querySelectorAll('pre > code').forEach(code => {
+    // if there are spans (line-per-span), flatten them to text with newlines
+    const spans = code.querySelectorAll(':scope > span');
+    if (spans.length) {
+      const lines = Array.from(spans).map(s => s.textContent);
+      code.textContent = lines.join('\n');
+    }
+  });
+})();
+</script>

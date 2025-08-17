@@ -12,6 +12,7 @@
   "tauri": {
     "windows": [
       {
+        "title": "ChatGPT",
         "label": "core",
         "url": "https://chatgpt.com",
         "resizable": true,

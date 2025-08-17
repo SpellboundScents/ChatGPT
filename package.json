@@ -1,7 +1,8 @@
 {
   "name": "chatgpt",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
+    "version:sync": "node scripts/sync-version.mjs",
     "dev:fe": "vite",
     "build:fe": "tsc && vite build",
     "dev": "pnpm tauri dev",
