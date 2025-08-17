@@ -4,8 +4,8 @@
   "scripts": {
     "dev:fe": "vite",
     "build:fe": "tsc && vite build",
-    "dev": "yarn tauri dev",
-    "build": "yarn tauri build",
+    "dev": "pnpm tauri dev",
+    "build": "pnpm tauri build",
     "updater": "tr updater",
     "release": "tr release --git",
     "fix:conf": "tr override --json.tauri_updater_active=false",
@@ -13,7 +13,8 @@
     "fix:tray:mac": "tr override --json.tauri_systemTray_iconPath=\"icons/tray-icon.png\" --json.tauri_systemTray_iconAsTemplate=true",
     "download": "node ./scripts/download.js",
     "tr": "tr",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:build": "bash -lc \"export TAURI_PRIVATE_KEY=$(/usr/bin/tr -d '\\n' < src-tauri/private.key); export TAURI_KEY_PASSWORD=${TAURI_KEY_PASSWORD}; pnpm tauri build\""
   },
   "license": "MIT",
   "author": "lencx <cxin1314@gmail.com>",
@@ -61,9 +62,4 @@
     "vite-tsconfig-paths": "^4.0.2"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
-}
-{
-  "scripts": {
-    "tauri:build": "bash -lc 'export TAURI_PRIVATE_KEY=$(tr -d \"\\n\" < src-tauri/private.key); export TAURI_KEY_PASSWORD=${TAURI_KEY_PASSWORD}; pnpm tauri build'"
-  }
 }
