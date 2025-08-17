@@ -7,9 +7,17 @@
   },
   "package": {
     "productName": "ChatGPT",
-    "version": "0.9.2"
+    "version": "../package.json"
   },
   "tauri": {
+    "windows": [
+      {
+        "label": "core",
+        "url": "https://chatgpt.com",
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
     "allowlist": {
       "all": true,
       "globalShortcut": {
@@ -42,7 +50,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.lencx.chatgpt",
+      "identifier": "com.chirv.chatgpt",
       "longDescription": "ChatGPT Desktop Application",
       "macOS": {
         "entitlements": null,
@@ -64,15 +72,18 @@
       }
     },
     "security": {
-      "csp": null
+      "csp": null,
+      "dangerousRemoteDomainIpcAccess": [
+    { "domain": "chatgpt.com", "windows": ["core"] }
+  ]
     },
     "updater": {
       "active": true,
       "dialog": false,
       "endpoints": [
-        "https://lencx.github.io/ChatGPT/install.json"
+        "https://github.com/SpellboundScents/ChatGPT/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIxMjY4OUI5MTVFNjBEMDUKUldRRkRlWVZ1WWttc1NGWEE0RFNSb0RqdnhsekRJZTkwK2hVLzhBZTZnaHExSEZ1ZEdzWkpXTHkK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCOTAyNDI5Q0U3QkUwNDMKUldSRDRIdk9LU1NRTzcvcTA3Vm90ZWppVTJiSTVvR0ZPc3FQb1RqOGlTcXpkYk4ya2pEYTEyeUIK"
     }
   }
 }

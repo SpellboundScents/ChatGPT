@@ -30,3 +30,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Private Keys
+*.pem
+*.p12
+*.key
+*.crt
+*.jks
+src-tauri/private.key
+src-tauri/.env

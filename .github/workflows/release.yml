@@ -1,0 +1,37 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v1.0.0'     # e.g. v1.0.0
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create a Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm i -g @tauri-apps/cli
+
+      - name: Build (signed) app
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        run: tauri build
+
+      - name: Create GitHub Release and upload artifacts (incl. latest.json)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/**/*
+            src-tauri/target/release/latest.json

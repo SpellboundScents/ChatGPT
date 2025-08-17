@@ -84,12 +84,163 @@ async fn main() {
         .menu(menu::init());
 
     if chat_conf.tray {
-        builder = builder.system_tray(menu::tray_menu());
-    }
+    builder = builder.system_tray(menu::tray_menu());
+}
 
-    builder
-        .on_menu_event(menu::menu_handler)
-        .on_system_tray_event(menu::tray_handler)
+// Inject CSS + fix clipping in the chat area (messages & code blocks)
+builder = builder.on_page_load(|window, _payload| {
+    // 1) Load our scoped CSS at compile-time
+    let css: &str = include_str!("../injected.css");
+    let css_json = serde_json::to_string(css).unwrap();
+
+    // 2) JS: inject CSS (document + shadow roots), tag chat container,
+    //    and permanently unclip code blocks only inside the chat area.
+    let js = format!(r#"
+      (function () {{
+        const CSS = {css_json};
+
+        // --- helpers ---
+        function ensureStyle(root, key) {{
+          try {{
+            const doc = (root && root.ownerDocument) ? root.ownerDocument : document;
+            const q   = (root && root.querySelector) ? root.querySelector.bind(root) : document.querySelector.bind(document);
+            let style = q('style[data-injected-by=\"' + key + '\"]');
+            if (!style) {{
+              style = doc.createElement('style');
+              style.setAttribute('data-injected-by', key);
+              (root === document ? (document.head || document.documentElement) : root).appendChild(style);
+            }}
+            if (style.textContent !== CSS) style.textContent = CSS;
+          }} catch (_) {{}}
+        }}
+
+        function tagMain() {{
+          const main = document.querySelector('[role=\"main\"]') || document.querySelector('main');
+          if (main && !main.hasAttribute('data-nick-fix')) main.setAttribute('data-nick-fix','');
+          return main;
+        }}
+
+        function injectAll() {{
+          // document head
+          ensureStyle(document, 'tauri');
+          // all open shadow roots
+          document.querySelectorAll('*').forEach(el => {{
+            if (el && el.shadowRoot) ensureStyle(el.shadowRoot, 'tauri-shadow');
+          }});
+          tagMain();
+        }}
+
+        function startObserver() {{
+          const target = document.documentElement || document.body;
+          if (!target) return;
+          const obs = new MutationObserver(() => injectAll());
+          obs.observe(target, {{ childList: true, subtree: true }});
+          markEmptyParas(document);
+        }}
+
+        // --- code block unclipping only inside chat area ---
+        function unclipWithinChat() {{
+          const chatRoot = tagMain();
+          if (!chatRoot) return;
+
+          function relax(el) {{
+            try {{
+              el.style.overflowY = 'visible';
+              el.style.maxHeight = 'none';
+              el.style.WebkitMaskImage = 'none';
+              el.style.maskImage = 'none';
+            }} catch (_){{
+            }}
+          }}
+
+          function preparePre(pre) {{
+            Object.assign(pre.style, {{
+              whiteSpace: 'pre',
+              overflowX: 'auto',
+              overflowY: 'visible',
+              maxHeight: 'none',
+              WebkitMaskImage: 'none',
+              maskImage: 'none',
+              display: 'block',
+              contain: 'paint',
+            }});
+          }}
+
+          function fixBlock(pre) {{
+            preparePre(pre);
+            let p = pre.parentElement, hops = 0;
+            while (p && p !== chatRoot && hops++ < 6) {{
+              const s = getComputedStyle(p);
+              const clips = (
+                s.overflow !== 'visible' || s.overflowY !== 'visible' || s.overflowX !== 'visible' ||
+                (s.maxHeight && s.maxHeight !== 'none') ||
+                (s.webkitMaskImage && s.webkitMaskImage !== 'none') ||
+                (s.maskImage && s.maskImage !== 'none')
+              );
+              if (clips) relax(p);
+              p = p.parentElement;
+            }}
+          }}
+
+          function sweep(root) {{
+            root.querySelectorAll?.('[data-nick-fix] pre, pre').forEach(fixBlock);
+          }}
+
+          // Mark paragraphs that are effectively empty so CSS can collapse them
+function markEmptyParas(root) {{
+  const SQUEEZE = /[\\s\\u200b\\u200c\\u200d\\u2060\\ufeff]/g;
+  (root.querySelectorAll ? root.querySelectorAll('[data-nick-fix] p, main p, [role="main"] p') : []).forEach(p => {{
+    try {{
+      // Treat <br> only as empty too
+      const html = (p.innerHTML || '').replace(/<br\\s*\\/?>(\\s|&nbsp;)*$/i, '');
+      const txt  = html.replace(/<[^>]*>/g, '').replace(SQUEEZE, '');
+      if (!txt && !p.hasAttribute('data-nick-empty')) {{
+        p.setAttribute('data-nick-empty', '');
+      }} else if (txt && p.hasAttribute('data-nick-empty')) {{
+        p.removeAttribute('data-nick-empty');
+      }}
+    }} catch (_){{
+    }}
+  }});
+}}
+
+          // run once now
+          sweep(chatRoot);
+
+          // keep fixing as new messages stream in
+          const mo = new MutationObserver(muts => {{
+            for (const m of muts) {{
+              for (const n of m.addedNodes) {{
+                if (n.nodeType === 1) sweep(n);
+              }}
+            }}
+          }});
+          mo.observe(chatRoot, {{ childList: true, subtree: true }});
+          markEmptyParas(document);
+        }}
+
+        // --- boot (DOM-safe) ---
+        function boot() {{
+          injectAll();
+          startObserver();
+          unclipWithinChat();
+          markEmptyParas(document);
+        }}
+        if (document.readyState === 'loading') {{
+          document.addEventListener('DOMContentLoaded', boot, {{ once: true }});
+        }} else {{
+          boot();
+        }}
+      }})();
+    "#);
+
+    let _ = window.eval(&js);
+});
+
+
+builder
+    .on_menu_event(menu::menu_handler)
+    .on_system_tray_event(menu::tray_handler)
         .on_window_event(|event| {
             // https://github.com/tauri-apps/tauri/discussions/2684
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
