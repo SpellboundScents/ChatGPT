@@ -13,7 +13,7 @@ async function rewrite(filename) {
       flag = true;
     }
     if (flag) {
-      if (!/winget install --id=lencx.ChatGPT -e --version/.test(content[i])) {
+      if (!/winget install --id=chirv.ChatGPT -e --version/.test(content[i])) {
         content[i] = content[i].replace(/(\d+).(\d+).(\d+)/g, argv[0]);
       }
     }

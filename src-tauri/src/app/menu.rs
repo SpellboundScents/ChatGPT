@@ -148,7 +148,7 @@ pub fn init() -> Menu {
             CustomMenuItem::new("awesome".to_string(), "Awesome ChatGPT")
                 .accelerator("CmdOrCtrl+Shift+A")
                 .into(),
-            CustomMenuItem::new("buy_coffee".to_string(), "Buy lencx a coffee").into(),
+            CustomMenuItem::new("buy_coffee".to_string(), "Buy the Dev a coffee").into(),
         ]),
     );
 

@@ -11,10 +11,10 @@ use tauri::TitleBarStyle;
 // pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15";
 // pub const PHONE_USER_AGENT: &str = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
 
-pub const ISSUES_URL: &str = "https://github.com/lencx/ChatGPT/issues";
-pub const UPDATE_LOG_URL: &str = "https://github.com/lencx/ChatGPT/blob/main/UPDATE_LOG.md";
-pub const AWESOME_URL: &str = "https://github.com/lencx/ChatGPT/blob/main/AWESOME.md";
-pub const BUY_COFFEE: &str = "https://www.buymeacoffee.com/lencx";
+pub const ISSUES_URL: &str = "https://github.com/SpellboundScents/ChatGPT/issues";
+pub const UPDATE_LOG_URL: &str = "https://github.com/SpellboundScents/ChatGPT/blob/main/UPDATE_LOG.md";
+pub const AWESOME_URL: &str = "https://github.com/SpellboundScents/ChatGPT/blob/master/AWESOME.md";
+pub const BUY_COFFEE: &str = "https://buymeacoffee.com/chirv";
 pub const GITHUB_PROMPTS_CSV_URL: &str =
     "https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv";
 pub const DEFAULT_CHAT_CONF: &str = r#"{

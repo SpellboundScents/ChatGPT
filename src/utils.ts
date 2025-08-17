@@ -42,7 +42,7 @@ export const readJSON = async (path: string, opts: readJSONOpts = {}) => {
     }
     await writeTextFile(file, isList ? '[]' : JSON.stringify({
       name: 'ChatGPT',
-      link: 'https://github.com/lencx/ChatGPT',
+      link: 'https://github.com/SpellboundScents/ChatGPT',
       ...defaultVal,
     }, null, 2))
   }

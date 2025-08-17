@@ -17,7 +17,7 @@
     "tauri:build": "bash -lc \"export TAURI_PRIVATE_KEY=$(/usr/bin/tr -d '\\n' < src-tauri/private.key); export TAURI_KEY_PASSWORD=${TAURI_KEY_PASSWORD}; pnpm tauri build\""
   },
   "license": "MIT",
-  "author": "lencx <cxin1314@gmail.com>",
+  "author": "chirv <inbox@spellboundscentswax.com>",
   "keywords": [
     "chatgpt",
     "app",

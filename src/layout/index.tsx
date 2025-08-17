@@ -80,7 +80,7 @@ export default function ChatLayout() {
             <Routes />
           </Content>
           <Footer style={{ textAlign: 'center' }}>
-            <a href="https://github.com/lencx/chatgpt" target="_blank">ChatGPT Desktop Application</a> ©2022 Created by lencx
+            <a href="https://github.com/SpellboundScents/chatgpt" target="_blank">ChatGPT Desktop Application</a> ©2022 lencx, ©2025 chirv
           </Footer>
         </Layout>
       </Layout>

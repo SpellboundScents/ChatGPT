@@ -299,7 +299,7 @@ pub async fn sync_prompts(app: AppHandle, time: u64) -> Option<Vec<ModelRecord>>
                 &model,
                 serde_json::json!({
                     "name": "ChatGPT Model",
-                    "link": "https://github.com/lencx/ChatGPT"
+                    "link": "https://github.com/SpellboundScents/ChatGPT"
                 })
                 .to_string(),
             )
