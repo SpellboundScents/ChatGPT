@@ -25,6 +25,17 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
+      # Pin (or float) the pnpm version you want, then activate it.
+      # You can use @latest, but pinning is more reproducible.
+      - name: Activate pnpm via Corepack
+        run: corepack prepare pnpm@9.7.1 --activate
+
+      # Optional but useful while debugging
+      - name: Verify pnpm
+        run: |
+          which pnpm
+          pnpm --version
+
       - name: Prepare pnpm via corepack (activates latest stable)
         run: corepack prepare pnpm@latest --activate
 
