@@ -1,33 +1,60 @@
 name: Release
+
 on:
   push:
     tags:
-      - 'v1.0.0'     # e.g. v1.0.0
+      - 'v1.0.0' # e.g. v1.0.0, v1.0.1, etc.
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to create a Release
+      contents: write  # needed to create a Release
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Enable corepack (pnpm)
+        run: corepack enable
 
-      - name: Install frontend deps
-        run: npm ci
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile
 
-      - name: Install Tauri CLI
-        run: npm i -g @tauri-apps/cli
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust target
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+
+      - name: Install Linux build dependencies (Tauri)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            build-essential \
+            curl wget file \
+            patchelf
+
+      # If @tauri-apps/cli is not in devDependencies, use dlx:
       - name: Build (signed) app
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-        run: tauri build
+        run: |
+          pnpm dlx @tauri-apps/cli tauri build
 
       - name: Create GitHub Release and upload artifacts (incl. latest.json)
         uses: softprops/action-gh-release@v2
