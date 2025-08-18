@@ -68,8 +68,6 @@ Releases available under [Releases](https://github.com/SpellboundScents/ChatGPT/
 - [pnpm (v9 or newer)](https://pnpm.io/)
 - [Tauri dependencies for your system](https://tauri.app/v1/guides/getting-started/prerequisites)
   - Linux: [libgtk-3-dev], [libwebkit2gtk-4.0-dev], [libayatana-appindicator3-dev], [librsvg2-dev]
-  - macOS: Xcode + Command Line Tools
-  - Windows: Visual Studio with C++ build tools
 
 ### 🚀 Run Locally
 ```bash
