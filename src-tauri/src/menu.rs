@@ -1,88 +1,28 @@
 use tauri::{
-  AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder,
   menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
+  AppHandle, Emitter, Manager, Runtime, Theme, WebviewUrl, WebviewWindowBuilder,
 };
+use tauri_plugin_opener::open_url;
 
-const APP_TITLE: &str = "ChatGPT";
-const CONFIG_HASH: &str = "#/config";
+// ----- helpers ---------------------------------------------------------------
 
-/// Build the full Linux-only menubar.
-pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-  // ChatGPT (app) menu
-  let chatgpt = Submenu::with_items(app, APP_TITLE, true, &[
-    &MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?,
-    &PredefinedMenuItem::separator(app)?,
-    &PredefinedMenuItem::quit(app, Some("Quit"))?, // Linux label
-  ])?;
-
-  // Preferences
-  let preferences = Submenu::with_items(app, "Preferences", true, &[
-    &MenuItem::with_id(app, "pref-open-config", "Control Center",   true, Some("Shift+Ctrl+G"))?,
-    &MenuItem::with_id(app, "pref-restart",     "Restart ChatGPT",  true, Some("Shift+Ctrl+R"))?,
-    &MenuItem::with_id(app, "pref-awesome",     "Awesome ChatGPT",  true, Some("Shift+Ctrl+A"))?,
-  ])?;
-
-  // Edit
-  let edit = Submenu::with_items(app, "Edit", true, &[
-    &PredefinedMenuItem::undo(app, None::<&str>)?,
-    &PredefinedMenuItem::redo(app, None::<&str>)?,
-    &PredefinedMenuItem::separator(app)?,
-    &PredefinedMenuItem::cut(app, None::<&str>)?,
-    &PredefinedMenuItem::copy(app, None::<&str>)?,
-    &PredefinedMenuItem::paste(app, None::<&str>)?,
-    &PredefinedMenuItem::select_all(app, None::<&str>)?,
-  ])?;
-
-  // View
-  let view = Submenu::with_items(app, "View", true, &[
-    &MenuItem::with_id(app, "view-back",    "Go Back",                    true, Some("Ctrl+Left"))?,
-    &MenuItem::with_id(app, "view-forward", "Go Forward",                 true, Some("Ctrl+Right"))?,
-    &MenuItem::with_id(app, "view-top",     "Scroll to Top of Screen",    true, Some("Ctrl+Up"))?,
-    &MenuItem::with_id(app, "view-bottom",  "Scroll to Bottom of Screen", true, Some("Ctrl+Down"))?,
-    &PredefinedMenuItem::separator(app)?,
-    &MenuItem::with_id(app, "reload",          "Reload",          true, Some("Ctrl+R"))?,
-    &MenuItem::with_id(app, "toggle-devtools", "Toggle DevTools", true, Some("Ctrl+Shift+I"))?,
-  ])?;
-
-  // Window
-  let window = Submenu::with_items(app, "Window", true, &[
-    &MenuItem::with_id(app, "win-stay", "Stay On Top", true, Some("Ctrl+T"))?,
-    &MenuItem::with_id(app, "win-tray", "System Tray", true, None::<&str>)?, // placeholder
-  ])?;
-
-  // Help
-  let help = Submenu::with_items(app, "Help", true, &[
-    &MenuItem::with_id(app, "help-log",         "ChatGPT Log",  true, None::<&str>)?,
-    &MenuItem::with_id(app, "help-update-log",  "Update Log",   true, None::<&str>)?,
-    &MenuItem::with_id(app, "help-report-bug",  "Report Bug",   true, None::<&str>)?,
-  ])?;
-
-  Menu::with_items(app, &[
-    &chatgpt,
-    &preferences,
-    &edit,
-    &view,
-    &window,
-    &help,
-  ])
+// Apply a native theme to all open windows.
+fn apply_theme_to_all<R: Runtime>(app: &AppHandle<R>, theme: Theme) {
+  for w in app.webview_windows().values() {
+    let _ = w.set_theme(Some(theme));
+  }
 }
 
-/// Open (or focus) the lencx-style Config window (hash route).
+// Open (or focus) the lencx-style Config window (hash route).
 fn open_or_focus_config<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
   #[cfg(debug_assertions)]
   let url = {
-    // Vite dev server with route path (no leading '#')
-    let path = CONFIG_HASH.trim_start_matches('#').trim_start_matches('/');
-    let full = format!("http://localhost:1420/{path}");
+    let full = "http://localhost:1420/#/config";
     WebviewUrl::External(full.parse().unwrap())
   };
 
   #[cfg(not(debug_assertions))]
-  let url = {
-    // bundled index.html + hash
-    let full = format!("index.html{CONFIG_HASH}");
-    WebviewUrl::App(full.into())
-  };
+  let url = WebviewUrl::App("index.html#/config".into());
 
   if app.get_webview_window("config").is_none() {
     WebviewWindowBuilder::new(app, "config", url)
@@ -98,12 +38,49 @@ fn open_or_focus_config<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
   Ok(())
 }
 
-/// Handle menu actions.
+// ----- menu builders ---------------------------------------------------------
+
+pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+  // ChatGPT
+  let chatgpt = Submenu::with_items(app, "ChatGPT", true, &[
+    &PredefinedMenuItem::separator(app)?,
+    &MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?,
+    &MenuItem::with_id(app, "donate", "☕ Buy Me a Coffee", true, None::<&str>)?,
+    &PredefinedMenuItem::quit(app, None::<&str>)?,
+  ])?;
+
+  // View
+  let view = Submenu::with_items(app, "View", true, &[
+    &MenuItem::with_id(app, "reload", "Reload", true, Some("Ctrl+R"))?,
+    &MenuItem::with_id(app, "toggle-devtools", "Toggle DevTools", true, Some("Ctrl+Shift+I"))?,
+    &MenuItem::with_id(app, "toggle-darkmode", "Toggle Dark Mode", true, None::<&str>)?,
+  ])?;
+
+  // Preferences
+  let preferences = Submenu::with_items(app, "Preferences", true, &[
+    &MenuItem::with_id(app, "pref-open-config", "Control Center",  true, Some("Shift+Ctrl+G"))?,
+    &MenuItem::with_id(app, "pref-restart",     "Restart ChatGPT", true, Some("Shift+Ctrl+R"))?,
+    &MenuItem::with_id(app, "pref-awesome",     "Awesome ChatGPT", true, Some("Shift+Ctrl+A"))?,
+  ])?;
+
+  // Help
+  let help = Submenu::with_items(app, "Help", true, &[
+    &MenuItem::with_id(app, "help-log",         "ChatGPT Log",  true, None::<&str>)?,
+    &MenuItem::with_id(app, "help-update-log",  "Update Log",   true, None::<&str>)?,
+    &MenuItem::with_id(app, "help-report-bug",  "Report Bug",   true, None::<&str>)?,
+  ])?;
+
+  Menu::with_items(app, &[&chatgpt, &preferences, &view, &help])
+}
+
 pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
   match event.id().as_ref() {
-    // App
+    // ChatGPT
     "check-updates" => {
       let _ = app.emit("menu-check-updates", ());
+    }
+    "donate" => {
+      let _ = open_url("https://buymeacoffee.com/chirv", None::<&str>);
     }
 
     // Preferences
@@ -114,11 +91,7 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
       tauri::process::restart(&app.env());
     }
     "pref-awesome" => {
-      // New opener API: just pass the URL and None for "with"
-      let _ = tauri_plugin_opener::open_url(
-        "https://github.com/lencx/awesome-chatgpt-prompts",
-        None::<&str>,
-      );
+      let _ = open_url("https://github.com/lencx/awesome-chatgpt-prompts", None::<&str>);
     }
 
     // View
@@ -133,50 +106,31 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         let _ = win.open_devtools();
       }
     }
-    "view-back" => {
-      if let Some(win) = app.get_webview_window("core") {
-        let _ = win.eval("history.back()");
-      }
-    }
-    "view-forward" => {
-      if let Some(win) = app.get_webview_window("core") {
-        let _ = win.eval("history.forward()");
-      }
-    }
-    "view-top" => {
-      if let Some(win) = app.get_webview_window("core") {
-        let _ = win.eval("window.scrollTo(0,0)");
-      }
-    }
-    "view-bottom" => {
-      if let Some(win) = app.get_webview_window("core") {
-        let _ = win.eval("window.scrollTo(0,document.body.scrollHeight)");
-      }
-    }
+    "toggle-darkmode" => {
+      // Get current theme from "core" window (Result -> Option via .ok()).
+      let current = app
+        .get_webview_window("core")
+        .and_then(|w| w.theme().ok());
 
-    // Window
-    "win-stay" => {
-      if let Some(win) = app.get_webview_window("core") {
-        if let Ok(current) = win.is_always_on_top() {
-          let _ = win.set_always_on_top(!current);
-        } else {
-          let _ = win.set_always_on_top(true);
-        }
-      }
-    }
-    "win-tray" => {
-      // optional: toggle tray visibility; for now just notify frontend
-      let _ = app.emit("menu-toggle-tray", ());
+      // Theme is non-exhaustive; handle Light/Dark explicitly, fallback otherwise.
+      let next = match current {
+        Some(Theme::Dark) => Theme::Light,
+        Some(Theme::Light) => Theme::Dark,
+        _ => Theme::Dark, // treat None/System/others as Light->Dark toggle start
+      };
+
+      // Apply to all open windows (native chrome).
+      apply_theme_to_all(app, next);
+
+      // If your local Config SPA listens for a CSS switch, you can still tell it:
+      let _ = app.emit("menu-toggle-dark", ());
     }
 
     // Help
-    "help-log" =>         { let _ = app.emit("open-chatgpt-log", ()); }
-    "help-update-log" =>  { let _ = app.emit("open-update-log", ()); }
+    "help-log" =>        { let _ = app.emit("open-chatgpt-log", ()); }
+    "help-update-log" => { let _ = app.emit("open-update-log", ()); }
     "help-report-bug" => {
-      let _ = tauri_plugin_opener::open_url(
-        "https://github.com/SpellboundScents/ChatGPT/issues/new",
-        None::<&str>,
-      );
+      let _ = open_url("https://github.com/SpellboundScents/ChatGPT/issues/new", None::<&str>);
     }
 
     _ => {}
