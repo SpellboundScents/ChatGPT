@@ -3,16 +3,16 @@
   windows_subsystem = "windows"
 )]
 
+mod menu;
+
 use tauri::{
-  Manager, WebviewUrl, WebviewWindowBuilder,
-  menu::{Menu, MenuItem, Submenu, PredefinedMenuItem},
+  Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
   tray::{TrayIcon, TrayIconBuilder, TrayIconEvent},
 };
+
 use tauri_plugin_autostart::MacosLauncher;
-use tauri::Emitter; // <- for app.emit(...)
 
-
-// ----- tray -----
+// ===== Tray =====
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
   TrayIconBuilder::new()
     .on_tray_icon_event(|tray, event| {
@@ -27,11 +27,33 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
     .build(app)
 }
 
-// ----- main -----
+// ===== Create (or focus) the main window =====
+fn ensure_core_window(app: &tauri::AppHandle) -> tauri::Result<WebviewWindow> {
+  // dev vs prod URL for the main window
+  #[cfg(debug_assertions)]
+  let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
+  #[cfg(not(debug_assertions))]
+  let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
+
+  let win = if let Some(w) = app.get_webview_window("core") {
+    w
+  } else {
+    WebviewWindowBuilder::new(app, "core", url)
+      .title("ChatGPT")
+      .resizable(true)
+      .visible(true)
+      .build()?
+  };
+
+  let _ = win.show();
+  let _ = win.set_focus();
+  Ok(win)
+}
+
 #[tokio::main]
 async fn main() {
   tauri::Builder::default()
-    // plugins
+    // ---- plugins you’re using ----
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_shell::init())
@@ -39,110 +61,15 @@ async fn main() {
     .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
     .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+    .plugin(tauri_plugin_opener::init()) // <— for opening external URLs
 
-    // app menubar
-    .menu(|handle| {
-      Menu::with_items(handle, &[
-        // ChatGPT
-        &Submenu::with_items(handle, "ChatGPT", true, &[
-          #[cfg(target_os = "macos")]
-          &PredefinedMenuItem::about(handle, None)?,
-          &PredefinedMenuItem::separator(handle)?,
-          &MenuItem::with_id(handle, "check-updates", "Check for Updates…", true, None::<&str>)?,
-          &PredefinedMenuItem::separator(handle)?,
-          &PredefinedMenuItem::quit(handle, None)?,
-        ])?,
+    // ---- menubar + click handling ----
+    .menu(|handle| menu::build_menu(handle))
+    .on_menu_event(menu::handle_menu_event)
 
-        // Preferences (includes “Go to Config” window)
-        &Submenu::with_items(handle, "Preferences", true, &[
-          &MenuItem::with_id(
-            handle,
-            "pref-open-config",
-            "Go to Config",
-            true,
-            Some("Shift+Ctrl+G"),
-          )?,
-          &MenuItem::with_id(
-            handle,
-            "pref-restart",
-            "Restart ChatGPT",
-            true,
-            Some("Shift+Ctrl+R"),
-          )?,
-        ])?,
-
-        // View
-        &Submenu::with_items(handle, "View", true, &[
-          &MenuItem::with_id(handle, "reload", "Reload", true, Some("CmdOrCtrl+R"))?,
-          &MenuItem::with_id(handle, "toggle-devtools", "Toggle DevTools", true, Some("CmdOrCtrl+Shift+I"))?,
-        ])?,
-      ])
-    })
-
-    // menu actions
-    .on_menu_event(|app, event| {
-      match event.id().as_ref() {
-        "reload" => {
-          if let Some(win) = app.get_webview_window("core") {
-            let _ = win.eval("location.reload()");
-          }
-        }
-        "toggle-devtools" => {
-          #[cfg(debug_assertions)]
-          if let Some(win) = app.get_webview_window("core") {
-            let _ = win.open_devtools();   // <- was toggle_devtools()
-          }
-
-        }
-        "check-updates" => {
-          // If you expose a frontend handler, you can emit here:
-          let _ = app.emit("menu-check-updates", ());
-        }
-        "pref-open-config" => {
-          // open/focus your custom config window
-          if app.get_webview_window("config").is_none() {
-            let _ = WebviewWindowBuilder::new(
-              app,
-              "config",
-              WebviewUrl::App("config.html".into())
-            )
-            .title("Config")
-            .inner_size(600.0, 420.0)
-            .resizable(true)
-            .build();
-          } else if let Some(cfg) = app.get_webview_window("config") {
-            let _ = cfg.set_focus();
-            let _ = cfg.show();
-          }
-        }
-        "pref-restart" => {
-          tauri::process::restart(&app.env());
-        }
-        _ => {}
-      }
-    })
-
-    // create window + tray
+    // ---- window + tray boot ----
     .setup(|app| {
-      // dev vs prod URL
-      #[cfg(debug_assertions)]
-      let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
-      #[cfg(not(debug_assertions))]
-      let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
-
-      if app.get_webview_window("core").is_none() {
-        WebviewWindowBuilder::new(app, "core", url)
-          .title("ChatGPT")
-          .resizable(true)
-          .visible(true)
-          .build()?;
-      }
-
-      if let Some(core) = app.get_webview_window("core") {
-        let _ = core.show();
-        let _ = core.set_focus();
-      }
-
+      let _core = ensure_core_window(&app.handle())?;
       let _tray = build_tray(&app.handle())?;
       Ok(())
     })
