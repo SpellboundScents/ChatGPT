@@ -1,7 +1,7 @@
 <p align="center">
   <img width="180" src="./public/logo.png" alt="ChatGPT">
   <h1 align="center">ChatGPT Desktop (Modern Fork)</h1>
-  <p align="center">An updated cross-platform ChatGPT desktop client for Mac, Windows, and Linux — forked from earlier community builds.</p>
+  <p align="center">An updated ChatGPT desktop client for Linux— forked from earlier community builds.</p>
 </p>
 
 ![License](https://img.shields.io/badge/License-Apache%202-green.svg)
@@ -31,18 +31,26 @@ So far, the following changes have been made:
 - Re-wired the Tauri auto-updater to point at **this repo’s releases** (instead of lencx’s).  
 - Generated a **new updater signing keypair** (so only builds from this fork are trusted).  
 - Began revising the documentation (this README) to reflect the new direction.
-- Fixed a lot of UI bugs, especially in chats with code blocks  
+- Fixed a lot of UI bugs, especially in chats with code blocks
+- Upgraded from Tauri 1.x to 2.x
+- Revised Menubar
+- Removed code for Windows and Mac. 
+  - OpenAI has their own desktop apps for these OSes so I will keep this Linux only.
+    - Everything is built & tested on Zorin/Ubuntu using VSC.
 
 ---
 
 ## 🚀 Roadmap
 
 - ✅ Set up updater infrastructure (GitHub Actions + signed releases).  
-- ⏳ Update app internals for **latest ChatGPT models & UI changes**.  
-- ⏳ Improve build workflows for Windows, macOS, and Linux.  
+- ✅ Update app internals for **latest ChatGPT models & UI changes**.  
+- ✅ Improve build workflows for Linux.
+- ✅ Migrated to Tauri 2
 - ⏳ Refresh app branding & assets to distinguish from upstream.  
 - ⏳ Continue squashing UI bugs
 - ⏳ Speed Up Loading Times
+- ⏳ Re-work Configuration Menu
+- ⏳ Fix Dark Mode toggle
 
 ---
 
@@ -60,8 +68,6 @@ Releases available under [Releases](https://github.com/SpellboundScents/ChatGPT/
 - [pnpm (v9 or newer)](https://pnpm.io/)
 - [Tauri dependencies for your system](https://tauri.app/v1/guides/getting-started/prerequisites)
   - Linux: [libgtk-3-dev], [libwebkit2gtk-4.0-dev], [libayatana-appindicator3-dev], [librsvg2-dev]
-  - macOS: Xcode + Command Line Tools
-  - Windows: Visual Studio with C++ build tools
 
 ### 🚀 Run Locally
 ```bash
