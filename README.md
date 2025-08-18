@@ -1,7 +1,7 @@
 <p align="center">
   <img width="180" src="./public/logo.png" alt="ChatGPT">
   <h1 align="center">ChatGPT Desktop (Modern Fork)</h1>
-  <p align="center">An updated cross-platform ChatGPT desktop client for Linux— forked from earlier community builds.</p>
+  <p align="center">An updated ChatGPT desktop client for Linux— forked from earlier community builds.</p>
 </p>
 
 ![License](https://img.shields.io/badge/License-Apache%202-green.svg)
