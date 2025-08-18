@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v1.0.0'
+      - 'v*'
   workflow_dispatch: {}       # allow manual runs (useful for testing)
 
 jobs:
