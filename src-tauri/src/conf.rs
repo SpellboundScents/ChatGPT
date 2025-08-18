@@ -155,7 +155,8 @@ impl ChatConfJson {
         )?;
 
         if let Some(handle) = app {
-            tauri::api::process::restart(&handle.env());
+            use tauri::process;
+            process::restart(&handle.env());
             // tauri::api::dialog::ask(
             //     handle.get_window("core").as_ref(),
             //     "ChatGPT Restart",

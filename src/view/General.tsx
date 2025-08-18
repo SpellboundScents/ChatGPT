@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Form, Radio, Switch, Input, Button, Space, message, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { invoke, shell, path } from '@tauri-apps/api';
-import { platform } from '@tauri-apps/api/os';
-import { ask } from '@tauri-apps/api/dialog';
-import { relaunch } from '@tauri-apps/api/process';
+import { invoke } from '@tauri-apps/api/core';
+import * as shell from '@tauri-apps/plugin-shell';
+import * as path from '@tauri-apps/api/path';      // path stayed in @tauri-apps/api
+import { platform } from '@tauri-apps/plugin-os';
+import { ask } from '@tauri-apps/plugin-dialog';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { clone, omit, isEqual } from 'lodash';
 
 import useInit from '@/hooks/useInit';

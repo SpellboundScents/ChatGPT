@@ -1,149 +1,78 @@
 /* ===== Chat content scope ===== */
-[data-nick-fix]{line-height:1.35}
+.nick-scope { line-height: 1.35; }
 
-/* --- CODE BLOCKS: make <pre> the only (horizontal) scroller --- */
-:is([data-nick-fix],[data-message-author-role]) pre{
-  display:block!important;overflow-x:auto!important;overflow-y:visible!important;
-  white-space:pre!important;word-break:normal!important;
-  -webkit-overflow-scrolling:touch;max-height:none!important;
-  margin:.55rem 0!important;padding:.75rem 1rem!important;
-  -webkit-mask-image:none!important;mask-image:none!important;contain:paint
-}
-:is([data-nick-fix],[data-message-author-role]) pre>code{
-  display:block!important;white-space:inherit!important;word-break:normal!important;min-width:100%!important
-}
-/* relax inner widget scrollers/padding */
-:is([data-nick-fix],[data-message-author-role]) pre [class*="overflow-y-"],
-:is([data-nick-fix],[data-message-author-role]) pre .overflow-y-auto{overflow:visible!important;max-height:none!important}
-:is([data-nick-fix],[data-message-author-role]) pre .p-4{padding:0!important}
-/* flatten sticky/absolute headers; let fixed heights auto-size */
-:is([data-nick-fix],[data-message-author-role]) pre :is(.sticky,.absolute){
-  position:static!important;inset:auto!important;top:auto!important;transform:none!important
-}
-:is([data-nick-fix],[data-message-author-role]) pre [class*="h-"]{height:auto!important}
-
-/* modest gap after code blocks */
-[data-nick-fix] .markdown pre+*,[data-nick-fix] .prose pre+*{margin-top:.4rem!important}
-
-/* --- General spacing & lists --- */
-[data-nick-fix] .markdown p,[data-nick-fix] .prose p{margin:.45rem 0!important}
-[data-nick-fix] .markdown :is(ul,ol),[data-nick-fix] .prose :is(ul,ol){margin:.55rem 1.25rem!important}
-
-/* --- Inline citations stay inline --- */
-[data-nick-fix] :is(a.citation,span.citation,span[data-citation],.oaicite,sup,.citation,.citation *){
-  display:inline!important;white-space:normal!important;line-height:1!important;margin:0!important;padding:0!important
+/* --- Code blocks (normalized) --- */
+.nick-scope pre.nick-code {
+  display: block;
+  overflow-x: auto;
+  overflow-y: visible;
+  white-space: pre;
+  word-break: normal;
+  margin: .55rem 0;
+  padding: .75rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: .5rem;
 }
 
-/* Defensive images */
-[data-nick-fix] .markdown img,[data-nick-fix] .prose img{max-width:100%;height:auto;display:inline-block}
-
-/* --- DIV+CODE variant (no <pre>) --- */
-[data-nick-fix] div.overflow-y-auto:has(> code.whitespace-pre\!){
-  overflow-x:auto!important;overflow-y:visible!important;white-space:pre!important;
-  margin:.55rem 0!important;padding:.75rem 1rem!important;-webkit-mask-image:none!important;mask-image:none!important;contain:paint
-}
-[data-nick-fix] div.overflow-y-auto:has(> code.whitespace-pre\!)>code{
-  display:inline-block!important;white-space:inherit!important;min-width:100%!important
+.nick-scope pre.nick-code > code {
+  display: block;
+  min-width: 100%;
+  white-space: inherit; /* inherit from pre */
 }
 
-/* Collapse trailing/empty BR-only paragraphs */
-[data-nick-fix] p>br:last-child{display:none!important}
-[data-nick-fix] p:has(> br:only-child){margin:0!important;padding:0!important;line-height:0!important;min-height:0!important}
+/* Modest gap after code blocks */
+.nick-scope pre.nick-code + * { margin-top: .4rem; }
 
-/* Un-contain & un-mask any wrapper that directly holds a <pre> */
-[data-nick-fix] .markdown :is(div,section,article,blockquote,li,pre):has(> pre),
-[data-nick-fix] .prose    :is(div,section,article,blockquote,li,pre):has(> pre){
-  overflow:visible!important;max-height:none!important;
-  -webkit-mask-image:none!important;mask-image:none!important;
-  contain:initial!important;transform:none!important;will-change:auto!important
-}
+/* --- General text spacing --- */
+.nick-scope p { margin: .45rem 0; }
+.nick-scope ul,
+.nick-scope ol { margin: .55rem 1.25rem; }
 
-/* Header shell sometimes sets inline-size containment; neutralize it */
-[data-nick-fix] .contain-inline-size:has(code){contain:none!important;inline-size:auto!important;width:max-content!important}
-
-/* Flatten sticky/absolute anywhere they wrap code (extra belt) */
-[data-nick-fix] :is(.sticky,.absolute):has(code){
-  position:static!important;inset:auto!important;top:auto!important;transform:none!important
-}
-
-/* Ensure pre’s own layer is stable; relax its immediate inner scroller */
-[data-nick-fix] pre{position:relative;z-index:0}
-[data-nick-fix] pre>.overflow-y-auto{overflow:visible!important;max-height:none!important}
-
-/* Nuclear safety: any ancestor that contains <pre> must not fade/mask/clip */
-:is([data-nick-fix],[data-message-author-role]) :where(*):has(pre){
-  -webkit-mask-image:none!important;mask-image:none!important;overflow:visible!important;max-height:none!important;
-  contain:initial!important;transform:none!important;filter:none!important;backdrop-filter:none!important;will-change:auto!important
+/* --- Inline citations / superscripts stay inline and compact --- */
+.nick-scope a.citation,
+.nick-scope span.citation,
+.nick-scope span[data-citation],
+.nick-scope .oaicite,
+.nick-scope sup,
+.nick-scope .citation,
+.nick-scope .citation * {
+  display: inline;
+  white-space: normal;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
-/* WebKit/Safari paint stability for long code blocks */
-@supports (-webkit-overflow-scrolling:touch){
-  :is([data-nick-fix],[data-message-author-role]) pre{
-    -webkit-transform:translateZ(0);backface-visibility:hidden
-  }
-}
-/* Spans-as-lines inside code blocks (both the PRE variant and DIV+CODE variant) */
-[data-nick-fix] pre > code > span,
-[data-nick-fix] code.whitespace-pre\! > span{
-  display:block !important;
-  margin:0 !important;
-  padding:0 !important;
-  line-height:1.35 !important; /* match your base */
+/* --- Inline code (not inside PRE) wraps nicely --- */
+.nick-scope :not(pre) > code {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  padding: .1em .25em;
+  border-radius: .2em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
-/* If the exporter injected line numbers into spans, neutralize width/padding */
-[data-nick-fix] pre > code > span [class*="line-number"],
-[data-nick-fix] code.whitespace-pre\! > span [class*="line-number"]{
-  display:inline !important; margin:0 !important; padding:0 !important;
-}
-/* Inline code (not inside PRE) should wrap normally */
-[data-nick-fix] :not(pre) > code {
-  white-space:normal !important;
-  word-break:break-word !important;
-  overflow:visible !important;
-  padding:.1em .25em !important;
-  border-radius:.2em;
-}
-/* Monospace + subtle background for block code */
-[data-nick-fix] pre, [data-nick-fix] pre > code, 
-[data-nick-fix] div.overflow-y-auto:has(> code.whitespace-pre\!) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-  background: color-mix(in srgb, currentColor 6%, transparent) !important;
-  border: 1px solid color-mix(in srgb, currentColor 12%, transparent) !important;
-  border-radius: .5rem !important;
-}
-/* Any ancestor chain between your scope root and a PRE must not clip */
-[data-nick-fix] :where(.markdown, .prose) :where(*) {
-  -webkit-mask-image:none !important;
-          mask-image:none !important;
-}
-[data-nick-fix] :where(.markdown, .prose) :where(*):has(pre){
-  overflow:visible !important; max-height:none !important;
-  contain:initial !important; transform:none !important; filter:none !important; backdrop-filter:none !important;
-}
-<script>
-(() => {
-  const scope = document.querySelector('[data-nick-fix]') || document;
-  // Convert <div class="overflow-y-auto"><code.whitespace-pre!>…</code></div> → <pre><code>…</code></pre>
-  scope.querySelectorAll('div.overflow-y-auto > code.whitespace-pre\\!').forEach(code => {
-    const pre = document.createElement('pre');
-    const newCode = document.createElement('code');
-    // Preserve language class(es)
-    code.classList.forEach(c => { if (c.startsWith('language-')) newCode.classList.add(c); });
-    newCode.textContent = code.textContent; // dump raw text; removes span wrappers safely
-    pre.appendChild(newCode);
-    const div = code.parentElement;
-    div.replaceWith(pre);
-  });
+/* --- Images defensive sizing --- */
+.nick-scope img { max-width: 100%; height: auto; display: inline-block; }
 
-  // Optional: unwrap span-wrapped lines inside <pre><code> while keeping text
-  scope.querySelectorAll('pre > code').forEach(code => {
-    // if there are spans (line-per-span), flatten them to text with newlines
-    const spans = code.querySelectorAll(':scope > span');
-    if (spans.length) {
-      const lines = Array.from(spans).map(s => s.textContent);
-      code.textContent = lines.join('\n');
-    }
-  });
-})();
-</script>
+/* --- Safari/iOS momentum scrolling only when relevant --- */
+@supports (-webkit-overflow-scrolling: touch) {
+  .nick-scope pre.nick-code { -webkit-overflow-scrolling: touch; }
+}
+
+/* Optional: “message” containers for virtualization / content-visibility later */
+.nick-scope .msg {
+  /* We’ll turn this on in a later step when we virtualize long chats */
+  /* content-visibility: auto; */
+  /* contain-intrinsic-size: 300px; */
+}
+/* drop this into your injected.css */
+.nick-scope .msg {
+  content-visibility: auto;
+  contain-intrinsic-size: 320px; /* tune: typical message height guess */
+  padding-block: .25rem;         /* keeps small breathing room */
+}

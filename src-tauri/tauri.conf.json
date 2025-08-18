@@ -1,86 +1,80 @@
 {
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ChatGPT",
+  "version": "../package.json",
+  "identifier": "com.chirv.chatgpt",
+
   "build": {
     "beforeDevCommand": "npm run dev:fe",
     "beforeBuildCommand": "npm run build:fe",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist"
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
-  "package": {
-    "productName": "ChatGPT",
-    "version": "../package.json"
-  },
-  "tauri": {
+
+  "app": {
+    "security": {
+      "csp": null
+    },
     "windows": [
       {
         "title": "ChatGPT",
         "label": "core",
         "url": "https://chatgpt.com",
         "resizable": true,
+        "visible": false,
         "fullscreen": false
       }
     ],
-    "allowlist": {
-      "all": true,
-      "globalShortcut": {
-        "all": true
-      },
-      "fs": {
-        "all": true,
-        "scope": [
-          "$HOME/.chatgpt/**"
-        ]
-      }
-    },
-    "systemTray": {
+    "trayIcon": {
       "iconPath": "icons/tray-icon.png",
       "iconAsTemplate": true,
       "menuOnLeftClick": false
-    },
-    "bundle": {
-      "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
-      "deb": {
-        "depends": []
-      },
-      "externalBin": [],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "com.chirv.chatgpt",
-      "longDescription": "ChatGPT Desktop Application",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "shortDescription": "ChatGPT",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": "",
-        "webviewInstallMode": {
-          "silent": true,
-          "type": "embedBootstrapper"
-        }
+    }
+  },
+
+  "bundle": {
+  "active": true,
+  "category": "DeveloperTool",
+  "copyright": "",
+  "externalBin": [],
+  "icon": [
+    "icons/32x32.png",
+    "icons/128x128.png",
+    "icons/128x128@2x.png",
+    "icons/icon.icns",
+    "icons/icon.ico"
+    ],
+    "longDescription": "ChatGPT Desktop Application",
+    "shortDescription": "ChatGPT",
+    "targets": "all",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "webviewInstallMode": {
+        "silent": true,
+        "type": "downloadBootstrapper"
       }
     },
-    "security": {
-      "csp": null,
-      "dangerousRemoteDomainIpcAccess": [
-    { "domain": "chatgpt.com", "windows": ["core"] }
-  ]
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+      
     },
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    }
+  },
+
+  "plugins": {
     "updater": {
       "active": true,
-      "dialog": false,
+      "dialog": true,
       "endpoints": [
         "https://github.com/SpellboundScents/ChatGPT/releases/latest/download/latest.json"
       ],

@@ -5,16 +5,15 @@ authors = ["chirv <inbox@spellboundscentswax.com>"]
 description = "ChatGPT Desktop Application"
 repository = "https://github.com/SpellboundScents/ChatGPT"
 license = "Apache-2.0"
-edition = "2025"
+edition = "2024"
 rust-version = "1.89.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [build-dependencies]
-tauri-build = {version = "1.6.3", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 anyhow = "1.0.66"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = "0.4.17"
 csv = "1.1.6"
@@ -22,32 +21,28 @@ thiserror = "1.0.38"
 walkdir = "2.3.2"
 regex = "1.7.0"
 reqwest = "0.11.13"
-wry = "0.24.1"
 dark-light = "1.0.0"
-serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.23.0", features = ["macros"] }
-tauri-plugin-positioner = { version = "1.0.4", features = ["system-tray"] }
-tauri = { version = "1.6.3", features = ["api-all", "devtools", "global-shortcut", "system-tray", "updater"] }
-[dependencies.tauri-plugin-log]
-git = "https://github.com/lencx/tauri-plugin-log"
-branch = "dev"
-features = ["colored"]
-[dependencies.tauri-plugin-autostart]
-git = "https://github.com/lencx/tauri-plugin-autostart"
-branch = "dev"
 
-# sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "sqlite"] }
+# Tauri v2 plugins
+tauri = { version = "2", features = ["devtools", "tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+# optional:
+# tauri-plugin-global-shortcut = "2"
+# tauri-plugin-log = "2"
+# tauri-plugin-positioner = "2"
+
 
 [features]
-# by default Tauri runs in production mode
-# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
-default = [ "custom-protocol" ]
-# this feature is used used for production builds where `devPath` points to the filesystem
-# DO NOT remove this
-custom-protocol = [ "tauri/custom-protocol" ]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
 
-# fix: mac v1.2.0 can not copy/paste
-# https://github.com/tauri-apps/tauri/issues/5669
 [profile.release]
 strip = true
 lto = true

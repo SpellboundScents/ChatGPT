@@ -36,7 +36,14 @@
   },
   "dependencies": {
     "@ant-design/icons": "^4.8.0",
-    "@tauri-apps/api": "^1.2.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-autostart": "^2.5.0",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-os": "^2.3.0",
+    "@tauri-apps/plugin-process": "^2",
+    "@tauri-apps/plugin-shell": "^2.3.0",
+    "@tauri-apps/plugin-updater": "^2",
     "antd": "^5.1.0",
     "dayjs": "^1.11.7",
     "lodash": "^4.17.21",
@@ -48,7 +55,7 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.2.2",
+    "@tauri-apps/cli": "^2.7.1",
     "@tauri-release/cli": "^0.2.3",
     "@types/lodash": "^4.14.191",
     "@types/node": "^18.7.10",
