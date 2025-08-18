@@ -31,18 +31,23 @@ So far, the following changes have been made:
 - Re-wired the Tauri auto-updater to point at **this repo’s releases** (instead of lencx’s).  
 - Generated a **new updater signing keypair** (so only builds from this fork are trusted).  
 - Began revising the documentation (this README) to reflect the new direction.
-- Fixed a lot of UI bugs, especially in chats with code blocks  
+- Fixed a lot of UI bugs, especially in chats with code blocks
+- Upgraded from Tauri 1.x to 2.x
+- Revised Menubar
 
 ---
 
 ## 🚀 Roadmap
 
 - ✅ Set up updater infrastructure (GitHub Actions + signed releases).  
-- ⏳ Update app internals for **latest ChatGPT models & UI changes**.  
-- ⏳ Improve build workflows for Windows, macOS, and Linux.  
+- ✅ Update app internals for **latest ChatGPT models & UI changes**.  
+- ✅ Improve build workflows for Linux.
+- ✅ Migrated to Tauri 2
 - ⏳ Refresh app branding & assets to distinguish from upstream.  
 - ⏳ Continue squashing UI bugs
 - ⏳ Speed Up Loading Times
+- ⏳ Re-work Configuration Menu
+- ⏳ Fix Dark Mode toggle
 
 ---
 
