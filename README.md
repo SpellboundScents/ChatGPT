@@ -1,7 +1,7 @@
 <p align="center">
   <img width="180" src="./public/logo.png" alt="ChatGPT">
   <h1 align="center">ChatGPT Desktop (Modern Fork)</h1>
-  <p align="center">An updated cross-platform ChatGPT desktop client for Mac, Windows, and Linux — forked from earlier community builds.</p>
+  <p align="center">An updated cross-platform ChatGPT desktop client for Linux— forked from earlier community builds.</p>
 </p>
 
 ![License](https://img.shields.io/badge/License-Apache%202-green.svg)
@@ -34,6 +34,9 @@ So far, the following changes have been made:
 - Fixed a lot of UI bugs, especially in chats with code blocks
 - Upgraded from Tauri 1.x to 2.x
 - Revised Menubar
+- Removed code for Windows and Mac. 
+  - OpenAI has their own desktop apps for these OSes so I will keep this Linux only.
+    - Everything is built & tested on Zorin/Ubuntu using VSC.
 
 ---
 
