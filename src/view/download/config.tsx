@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Tag, Space, Popconfirm } from 'antd';
-import { path, shell } from '@tauri-apps/api';
+import * as path from '@tauri-apps/api/path';
+import { openPath } from '@tauri-apps/plugin-opener';
 
 import { EditRow } from '@/hooks/useColumns';
 
@@ -71,7 +72,7 @@ const RenderPath = ({ row }: any) => {
   useInit(async () => {
       setFilePath(await getPath(row));
   })
-  return <a onClick={() => shell.open(filePath)}>{filePath}</a>;
+  return <a onClick={() => openPath(filePath)}>{filePath}</a>;
 };
 
 export const getPath = async (row: any) => {

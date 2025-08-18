@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Table, Modal, Button, message } from 'antd';
-import { invoke, path, fs } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
+import * as path from '@tauri-apps/api/path';
+import { remove, readTextFile } from '@tauri-apps/plugin-fs';
 
 import useData from '@/hooks/useData';
 import useChatModel, { useCacheModel } from '@/hooks/useChatModel';
@@ -49,7 +51,7 @@ export default function SyncCustom() {
       (async () => {
         try {
           const file = await path.join(await chatRoot(), 'cache_model', `${opInfo?.opRecord?.id}.json`);
-          await fs.removeFile(file);
+          await remove(file);
         } catch(e) {}
         const data = opRemove(opInfo?.opRecord?.[opSafeKey]);
         modelSet(data);
@@ -85,7 +87,7 @@ export default function SyncCustom() {
       await modelCacheSet(fmtData(data), file);
     } else {
       // parse csv
-      const data = await fs.readTextFile(filePath);
+      const data = await readTextFile(filePath);
       const list: Record<string, string>[] = await invoke('parse_prompt', { data });
       await modelCacheSet(fmtData(list), file);
     }

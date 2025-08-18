@@ -39,3 +39,6 @@ dist-ssr
 *.jks
 src-tauri/private.key
 src-tauri/.env
+
+# Misc
+fix-tauri2.sh

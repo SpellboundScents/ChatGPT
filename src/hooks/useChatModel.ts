@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { clone } from 'lodash';
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 
 import { CHAT_MODEL_JSON, CHAT_MODEL_CMD_JSON, readJSON, writeJSON } from '@/utils';
 import useInit from '@/hooks/useInit';

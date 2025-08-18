@@ -1,7 +1,8 @@
+import { exists, mkdir } from '@tauri-apps/plugin-fs';
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { open, save, message } from "@tauri-apps/plugin-dialog";
 import { relaunch, exit } from "@tauri-apps/plugin-process";
-import { platform, type, version } from "@tauri-apps/api/os";
+import { platform, type, version } from "@tauri-apps/plugin-os";
 import { homeDir, join, dirname } from '@tauri-apps/api/path';
 import dayjs from 'dayjs';
 
@@ -39,9 +40,9 @@ export const readJSON = async (path: string, opts: readJSONOpts = {}) => {
     file = await join(root, path);
   }
 
-  if (!await exists(file)) {
+  if (!(await exists(file))) {
     if (await dirname(file) !== root) {
-      await createDir(await dirname(file), { recursive: true });
+      await mkdir(await dirname(file), { recursive: true });
     }
     await writeTextFile(file, isList ? '[]' : JSON.stringify({
       name: 'ChatGPT',
@@ -67,8 +68,8 @@ export const writeJSON = async (path: string, data: Record<string, any>, opts: w
     file = await join(root, path);
   }
 
-  if (isRoot && !await exists(await dirname(file))) {
-    await createDir(await dirname(file), { recursive: true });
+  if (isRoot && !(await exists(await dirname(file)))) {
+    await mkdir(await dirname(file), { recursive: true });
   }
 
   await writeTextFile(file, JSON.stringify(data, null, 2));

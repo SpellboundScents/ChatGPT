@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Tag, Space, Popconfirm } from 'antd';
 import { HistoryOutlined } from '@ant-design/icons';
-import { shell, path } from '@tauri-apps/api';
+import * as shell from '@tauri-apps/plugin-shell';
+import * as path from '@tauri-apps/api/path';
 import { Link } from 'react-router-dom';
 
 import useInit from '@/hooks/useInit';

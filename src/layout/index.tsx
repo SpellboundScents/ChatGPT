@@ -3,7 +3,7 @@ import { Layout, Menu, Tooltip, ConfigProvider, theme, Tag } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getName, getVersion } from '@tauri-apps/api/app';
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 
 import useInit from '@/hooks/useInit';
 import Routes, { menuItems } from '@/routes';

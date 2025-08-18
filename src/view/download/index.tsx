@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Table, Modal, Popconfirm, Button, message } from 'antd';
-import { invoke, path, shell, fs } from '@tauri-apps/api';
-
+import { invoke } from '@tauri-apps/api/core';
+import * as path from '@tauri-apps/api/path';
+import { openPath } from '@tauri-apps/plugin-opener';
+import { readFile, remove } from '@tauri-apps/plugin-fs';
 import useInit from '@/hooks/useInit';
 import useJson from '@/hooks/useJson';
 import useData from '@/hooks/useData';
@@ -45,14 +47,14 @@ export default function Download() {
       const isImg = ['png'].includes(record?.ext);
       const file = await path.join(await chatRoot(), 'download', isImg ? 'img' : record?.ext, `${record?.id}.${record?.ext}`);
       if (opInfo.opType === 'preview') {
-        const data = await fs.readBinaryFile(file);
+        const data = await readFile(file);
         const sourceData = renderFile(data, record?.ext);
         setSource(sourceData);
         setVisible(true);
         return;
       }
       if (opInfo.opType === 'delete') {
-        await fs.removeFile(file);
+        await remove(file);
         await handleRefresh();
       }
       if (opInfo.opType === 'rowedit') {
@@ -67,7 +69,7 @@ export default function Download() {
   const handleDelete = async () => {
     if (opData?.length === selectedRows.length) {
       const downloadDir = await path.join(await chatRoot(), 'download');
-      await fs.removeDir(downloadDir, { recursive: true });
+      await remove(downloadDir, { recursive: true });
       await handleRefresh();
       message.success('All files have been cleared!');
       return;
@@ -76,7 +78,7 @@ export default function Download() {
     const rows = selectedRows.map(async (i) => {
       const isImg = ['png'].includes(i?.ext);
       const file = await path.join(await chatRoot(), 'download', isImg ? 'img' : i?.ext, `${i?.id}.${i?.ext}`);
-      await fs.removeFile(file);
+      await remove(file);
       return file;
     })
     Promise.all(rows).then(async () => {
@@ -120,7 +122,7 @@ export default function Download() {
       </div>
       <div className="chat-table-tip">
         <div className="chat-file-path">
-          <div>PATH: <a onClick={() => shell.open(downloadPath)} title={downloadPath}>{downloadPath}</a></div>
+          <div>PATH: <a onClick={() => openPath(downloadPath)} title={downloadPath}>{downloadPath}</a></div>
         </div>
       </div>
       <Table

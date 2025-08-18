@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Table, Button, Modal, message } from 'antd';
-import { shell, path } from '@tauri-apps/api';
-
+import * as shell from '@tauri-apps/plugin-shell';
+import * as path from '@tauri-apps/api/path';
 import useInit from '@/hooks/useInit';
 import useData from '@/hooks/useData';
 import useChatModel, { useCacheModel } from '@/hooks/useChatModel';

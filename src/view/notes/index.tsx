@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Table, Modal, Popconfirm, Button, message } from 'antd';
-import { invoke, path, shell, fs } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
+import * as path from '@tauri-apps/api/path';
+import { openPath } from '@tauri-apps/plugin-opener';
+import { readTextFile, remove } from '@tauri-apps/plugin-fs';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -39,7 +42,7 @@ export default function Notes() {
       const record = opInfo?.opRecord;
       const file = await path.join(await chatRoot(), 'notes', `${record?.id}.${record?.ext}`);
       if (opInfo.opType === 'preview') {
-        const data = await fs.readTextFile(file);
+        const data = await readTextFile(file);
         setSource(data);
         setVisible(true);
         return;
@@ -48,7 +51,7 @@ export default function Notes() {
         alert('TODO');
       }
       if (opInfo.opType === 'delete') {
-        await fs.removeFile(file);
+        await remove(file);
         await handleRefresh();
       }
       if (opInfo.opType === 'rowedit') {
@@ -63,7 +66,7 @@ export default function Notes() {
   const handleDelete = async () => {
     if (opData?.length === selectedRows.length) {
       const notesDir = await path.join(await chatRoot(), 'notes');
-      await fs.removeDir(notesDir, { recursive: true });
+      await remove(notesDir, { recursive: true });
       await handleRefresh();
       message.success('All files have been cleared!');
       return;
@@ -71,7 +74,7 @@ export default function Notes() {
 
     const rows = selectedRows.map(async (i) => {
       const file = await path.join(await chatRoot(), 'notes', `${i?.id}.${i?.ext}`);
-      await fs.removeFile(file);
+      await remove(file);
       return file;
     })
     Promise.all(rows).then(async () => {
@@ -115,7 +118,7 @@ export default function Notes() {
       </div>
       <div className="chat-table-tip">
         <div className="chat-file-path">
-          <div>PATH: <a onClick={() => shell.open(notesPath)} title={notesPath}>{notesPath}</a></div>
+          <div>PATH: <a onClick={() => openPath(notesPath)} title={notesPath}>{notesPath}</a></div>
         </div>
       </div>
       <Table
@@ -137,7 +140,7 @@ export default function Notes() {
           children={source}
           linkTarget="_blank"
           components={{
-            code({node, inline, className, children, ...props}) {
+            code({node, inline, className, children, ...props}: any) {
               const match = /language-(\w+)/.exec(className || '')
               return !inline && match ? (
                 <SyntaxHighlighter

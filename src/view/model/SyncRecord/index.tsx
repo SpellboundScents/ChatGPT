@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Table, Button } from 'antd';
-import { shell, path } from '@tauri-apps/api';
-
+import * as shell from '@tauri-apps/plugin-shell';
+import * as path from '@tauri-apps/api/path';
 import useColumns from '@/hooks/useColumns';
 import useData from '@/hooks/useData';
 import { useCacheModel } from '@/hooks/useChatModel';
