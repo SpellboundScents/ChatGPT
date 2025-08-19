@@ -2,7 +2,7 @@ name: Build & Release (Tauri v2)
 
 on:
   push:
-    tags: ["v*.*.*"]     # e.g., v1.1.0-rc.0
+    tags: ["v*.*.*"]     # e.g. v1.1.0-rc.0
   workflow_dispatch:
 
 env:
@@ -28,21 +28,19 @@ jobs:
             pnpm-lock.yaml
             **/pnpm-lock.yaml
 
-      # ✅ This both installs pnpm AND runs "pnpm install" in one go.
-      # Set package_json_path if your package.json is NOT at repo root.
+      # ✅ Install pnpm binary and run `pnpm install` in the same composite step
       - name: Setup pnpm & install deps
         uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: true
-          # package_json_path: ./   # <-- change to ./app if monorepo layout
+          # package_json_path: ./   # keep as root; set to ./app if you ever move it
 
-      # 🧪 Diagnostics (helps if it still fails somewhere else)
+      # 🔍 Diagnostics (keep while testing)
       - name: Show tool versions and PATH
         run: |
           node -v
           npm -v
-          corepack --version || true
           command -v pnpm || echo "pnpm NOT on PATH"
           pnpm -v || true
           echo "PATH=$PATH"
@@ -53,7 +51,7 @@ jobs:
       - name: Cache cargo/target
         uses: swatinem/rust-cache@v2
 
-      # (Uncomment if bundling errors mention GTK/WebKit/AppIndicator)
+      # If bundling later complains about GTK/WebKit/AppIndicator, uncomment:
       # - name: Install Linux packaging deps
       #   run: |
       #     sudo apt-get update
