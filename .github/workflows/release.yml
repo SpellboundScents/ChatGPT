@@ -1,20 +1,19 @@
 name: Build & Release (Tauri v2)
 
 on:
-  # tag like v1.1.0-rc.0 triggers a release
   push:
-    tags: ["v*.*.*"]
-  # allow manual runs too
+    tags: ["v*.*.*"]     # tag like v1.1.0-rc.0
   workflow_dispatch:
 
 env:
-  # rust speeds
   CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create GitHub Releases
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,42 +22,46 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          cache: 'pnpm'
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            **/pnpm-lock.yaml
 
-      # Fix for “Unable to locate executable file: pnpm”
+      # ✅ Install pnpm (puts pnpm on PATH). No need for corepack with this path.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: false
 
-      - name: Enable Corepack
-        run: corepack enable
-
+      # (optional) if your repo uses a subfolder, add working-directory: <path>
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # (Optional) cache Rust target to speed up Rust builds
       - name: Cache cargo/target
         uses: swatinem/rust-cache@v2
+
+      # If you need extra Linux deps for bundling, uncomment:
+      # - name: Install Linux packaging deps
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
+      #       libsoup-3.0-dev libayatana-appindicator3-dev patchelf
 
       - name: Build & Upload release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # these two are REQUIRED for the updater to sign artifacts
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}               # e.g. v1.1.0-rc.0
+          tagName: ${{ github.ref_name }}        # v1.1.0-rc.0
           releaseName: ${{ github.ref_name }}
           releaseBody: "Automated release for ${{ github.ref_name }}"
           releaseDraft: false
           prerelease: true
-
-          # Linux-only build (AppImage, .deb, .rpm) — add macOS/Windows later if you want
           args: >
             --bundles appimage deb rpm
