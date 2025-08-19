@@ -2,7 +2,7 @@ name: Build & Release (Tauri v2)
 
 on:
   push:
-    tags: ["v*.*.*"]   # e.g. v1.1.0-rc.0
+    tags: ["v*.*.*"]     # e.g., v1.1.0-rc.0
   workflow_dispatch:
 
 env:
@@ -28,16 +28,24 @@ jobs:
             pnpm-lock.yaml
             **/pnpm-lock.yaml
 
-      # ✅ Absolutely ensure pnpm exists on PATH (bypasses Corepack & action quirks)
-      - name: Install pnpm (global)
-        run: |
-          npm i -g pnpm@9
-          pnpm -v
-          which pnpm
-          echo "PATH=$PATH"
+      # ✅ This both installs pnpm AND runs "pnpm install" in one go.
+      # Set package_json_path if your package.json is NOT at repo root.
+      - name: Setup pnpm & install deps
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: true
+          # package_json_path: ./   # <-- change to ./app if monorepo layout
 
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
+      # 🧪 Diagnostics (helps if it still fails somewhere else)
+      - name: Show tool versions and PATH
+        run: |
+          node -v
+          npm -v
+          corepack --version || true
+          command -v pnpm || echo "pnpm NOT on PATH"
+          pnpm -v || true
+          echo "PATH=$PATH"
 
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -45,7 +53,7 @@ jobs:
       - name: Cache cargo/target
         uses: swatinem/rust-cache@v2
 
-      # (Optional) Linux packaging deps; uncomment if bundling fails for GTK/WebKit/AppIndicator
+      # (Uncomment if bundling errors mention GTK/WebKit/AppIndicator)
       # - name: Install Linux packaging deps
       #   run: |
       #     sudo apt-get update
