@@ -19,6 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 1) Put pnpm on PATH *first* (standalone binary, no Corepack flakiness)
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      # 2) Then setup Node (and enable pnpm cache keys via lockfile)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -28,30 +36,27 @@ jobs:
             pnpm-lock.yaml
             **/pnpm-lock.yaml
 
-      # ✅ Install pnpm binary and run `pnpm install` in the same composite step
-      - name: Setup pnpm & install deps
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: true
-          # package_json_path: ./   # keep as root; set to ./app if you ever move it
+      # 3) Install frontend deps at repo root (your package.json & lockfile live here)
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
 
-      # 🔍 Diagnostics (keep while testing)
-      - name: Show tool versions and PATH
+      # (Optional) quick diag while we’re fixing order issues
+      - name: Tool versions / PATH
         run: |
           node -v
-          npm -v
-          command -v pnpm || echo "pnpm NOT on PATH"
-          pnpm -v || true
+          pnpm -v
+          command -v pnpm
           echo "PATH=$PATH"
 
+      # 4) Rust toolchain for Tauri build
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # 5) Cache cargo target
       - name: Cache cargo/target
         uses: swatinem/rust-cache@v2
 
-      # If bundling later complains about GTK/WebKit/AppIndicator, uncomment:
+      # 6) Linux packaging deps (uncomment if bundling errors mention GTK/WebKit/AppIndicator)
       # - name: Install Linux packaging deps
       #   run: |
       #     sudo apt-get update
@@ -59,6 +64,7 @@ jobs:
       #       libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev \
       #       libayatana-appindicator3-dev patchelf
 
+      # 7) Build & create the GitHub Release
       - name: Build & Upload release
         uses: tauri-apps/tauri-action@v0
         env:
