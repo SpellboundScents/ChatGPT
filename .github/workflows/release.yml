@@ -2,7 +2,13 @@ name: Build & Release (Tauri v2)
 
 on:
   push:
-    tags: ["v*.*.*"]
+    branches:
+      - master
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 env:
