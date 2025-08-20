@@ -275,4 +275,116 @@
     else document.addEventListener("DOMContentLoaded", () => v.install(), { once: true });
     window.virtualizer = v;
   })();
+  (function installLoader() {
+    if (window.__loaderInstalled) return;
+    window.__loaderInstalled = true;
+    const ensureStyle = () => {
+      if (document.getElementById("nick-loader-style")) return;
+      const s = document.createElement("style");
+      s.id = "nick-loader-style";
+      s.textContent = `
+      #nick-loader{
+        position:fixed;top:24px;left:50%;transform:translateX(-50%);
+        padding:.55rem .8rem;border-radius:999px;
+        background:color-mix(in oklab, Canvas, CanvasText 6%);
+        color:CanvasText;box-shadow:0 6px 24px rgba(0,0,0,.18);
+        display:inline-flex;align-items:center;gap:.5rem;
+        font:600 13px system-ui,ui-sans-serif,Segoe UI,Roboto,Arial;
+        z-index:2147483647
+      }
+      #nick-loader svg{display:block}
+      #nick-loader .arc{transform-origin:8.5px 9px;animation:nick-rotate 1s linear infinite}
+      @keyframes nick-rotate{to{transform:rotate(360deg)}}
+      @media (prefers-reduced-motion:reduce){#nick-loader .arc{animation:none}}
+    `;
+      document.head.appendChild(s);
+    };
+    const ensureNode = () => {
+      if (document.getElementById("nick-loader")) return;
+      const d = document.createElement("div");
+      d.id = "nick-loader";
+      d.setAttribute("aria-busy", "true");
+      d.setAttribute("aria-live", "polite");
+      d.innerHTML = '<svg width="28" height="28" viewBox="0 0 18 18" role="img" aria-label="Loading"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2" opacity=".15"/><path class="arc" d="M9 2 a7 7 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Loading\u2026</span>';
+      document.documentElement.appendChild(d);
+    };
+    const show = () => {
+      try {
+        ensureStyle();
+        ensureNode();
+        const n = document.getElementById("nick-loader");
+        if (n) n.style.display = "inline-flex";
+      } catch {
+      }
+    };
+    const hide = () => {
+      try {
+        const n = document.getElementById("nick-loader");
+        if (n) n.style.display = "none";
+      } catch {
+      }
+    };
+    window.__loaderShow = show;
+    window.__loaderHide = hide;
+    show();
+    window.addEventListener("load", () => hide(), { once: true });
+    let inFlight = 0;
+    let debounce = null;
+    const bump = () => {
+      if (debounce == null) {
+        debounce = window.setTimeout(() => {
+          debounce = null;
+          if (inFlight > 0) show();
+        }, 120);
+      }
+    };
+    const dec = () => {
+      inFlight = Math.max(0, inFlight - 1);
+      if (inFlight === 0) hide();
+    };
+    const _fetch = window.fetch?.bind(window);
+    if (_fetch) {
+      window.fetch = (...args) => {
+        inFlight++;
+        bump();
+        return _fetch(...args).finally(dec);
+      };
+    }
+    const XO = XMLHttpRequest;
+    if (XO?.prototype) {
+      const _open = XO.prototype.open;
+      const _send = XO.prototype.send;
+      XO.prototype.open = function(...a) {
+        this.addEventListener("loadend", dec);
+        return _open.apply(this, a);
+      };
+      XO.prototype.send = function(...a) {
+        inFlight++;
+        bump();
+        return _send.apply(this, a);
+      };
+    }
+    const onNav = () => {
+      show();
+      requestAnimationFrame(() => requestAnimationFrame(() => hide()));
+    };
+    const _push = history.pushState?.bind(history);
+    const _replace = history.replaceState?.bind(history);
+    if (_push) {
+      history.pushState = function(...a) {
+        const r = _push(...a);
+        onNav();
+        return r;
+      };
+    }
+    if (_replace) {
+      history.replaceState = function(...a) {
+        const r = _replace(...a);
+        onNav();
+        return r;
+      };
+    }
+    window.addEventListener("popstate", onNav);
+    window.addEventListener("beforeunload", show);
+  })();
 })();

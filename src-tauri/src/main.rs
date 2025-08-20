@@ -104,20 +104,18 @@ fn main() -> Result<()> {
 
     // in-window loader: inject on every navigation start, hide on finish
     .on_page_load(|window, payload| {
-      match payload.event() {
-        PageLoadEvent::Started => {
-          // re-inject (fresh docs on navigation) and show
-          let _ = window.eval(LOADER_INJECT_JS);
-          let _ = window.eval(LOADER_SHOW_JS);
-        }
-        PageLoadEvent::Finished => {
-          // ensure window is visible/focused, then hide loader
-          let _ = window.show();
-          let _ = window.set_focus();
-          let _ = window.eval(LOADER_HIDE_JS);
-        }
-      }
-    })
+  if window.label() == "splash" { return; }
+  match payload.event() {
+    PageLoadEvent::Started => {
+      // no-op: the virtualizer shows the loader immediately itself
+    }
+    PageLoadEvent::Finished => {
+      let _ = window.show();
+      let _ = window.set_focus();
+      // no-op: the virtualizer will hide on 'load' and via network watcher
+    }
+  }
+})
 
     .setup(|app| {
       // reuse existing window (from config) or create one

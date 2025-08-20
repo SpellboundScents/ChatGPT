@@ -323,3 +323,143 @@ export function createVirtualizer(): API {
   else document.addEventListener('DOMContentLoaded', () => v.install(), { once: true });
   (window as any).virtualizer = v;
 })();
+// --- loader overlay + wiring (idempotent) -----------------------------------
+declare global {
+  interface Window {
+    __loaderInstalled?: boolean;
+    __loaderShow?: () => void;
+    __loaderHide?: () => void;
+  }
+}
+
+(function installLoader() {
+  if (window.__loaderInstalled) return;
+  window.__loaderInstalled = true;
+
+  const ensureStyle = () => {
+    if (document.getElementById('nick-loader-style')) return;
+    const s = document.createElement('style');
+    s.id = 'nick-loader-style';
+    s.textContent = `
+      #nick-loader{
+        position:fixed;top:24px;left:50%;transform:translateX(-50%);
+        padding:.55rem .8rem;border-radius:999px;
+        background:color-mix(in oklab, Canvas, CanvasText 6%);
+        color:CanvasText;box-shadow:0 6px 24px rgba(0,0,0,.18);
+        display:inline-flex;align-items:center;gap:.5rem;
+        font:600 13px system-ui,ui-sans-serif,Segoe UI,Roboto,Arial;
+        z-index:2147483647
+      }
+      #nick-loader svg{display:block}
+      #nick-loader .arc{transform-origin:8.5px 9px;animation:nick-rotate 1s linear infinite}
+      @keyframes nick-rotate{to{transform:rotate(360deg)}}
+      @media (prefers-reduced-motion:reduce){#nick-loader .arc{animation:none}}
+    `;
+    document.head.appendChild(s);
+  };
+
+  const ensureNode = () => {
+    if (document.getElementById('nick-loader')) return;
+    const d = document.createElement('div');
+    d.id = 'nick-loader';
+    d.setAttribute('aria-busy', 'true');
+    d.setAttribute('aria-live', 'polite');
+    d.innerHTML =
+      '<svg width="28" height="28" viewBox="0 0 18 18" role="img" aria-label="Loading">'
+      + '<circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2" opacity=".15"/>'
+      + '<path class="arc" d="M9 2 a7 7 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+      + '<span>Loading…</span>';
+    document.documentElement.appendChild(d);
+  };
+
+  const show = () => {
+    try {
+      ensureStyle(); ensureNode();
+      const n = document.getElementById('nick-loader') as HTMLElement | null;
+      if (n) n.style.display = 'inline-flex';
+    } catch {}
+  };
+  const hide = () => {
+    try {
+      const n = document.getElementById('nick-loader') as HTMLElement | null;
+      if (n) n.style.display = 'none';
+    } catch {}
+  };
+
+  window.__loaderShow = show;
+  window.__loaderHide = hide;
+
+  // --- show immediately on doc start; hide at onload ------------------------
+  // (init scripts run very early, so we show now)
+  show();
+  window.addEventListener('load', () => hide(), { once: true });
+
+  // --- Network + SPA route watchers (debounced to avoid flicker) ------------
+  let inFlight = 0;
+  let debounce: number | null = null;
+
+  const bump = () => {
+    if (debounce == null) {
+      debounce = window.setTimeout(() => {
+        debounce = null;
+        if (inFlight > 0) show();
+      }, 120);
+    }
+  };
+  const dec = () => {
+    inFlight = Math.max(0, inFlight - 1);
+    if (inFlight === 0) hide();
+  };
+
+  // fetch
+  const _fetch = window.fetch?.bind(window);
+  if (_fetch) {
+    window.fetch = (...args: Parameters<typeof fetch>) => {
+      inFlight++; bump();
+      return _fetch(...args).finally(dec);
+    };
+  }
+
+  // XHR
+  const XO = XMLHttpRequest as any;
+  if (XO?.prototype) {
+    const _open = XO.prototype.open;
+    const _send = XO.prototype.send;
+    XO.prototype.open = function (...a: any[]) {
+      this.addEventListener('loadend', dec);
+      return _open.apply(this, a);
+    };
+    XO.prototype.send = function (...a: any[]) {
+      inFlight++; bump();
+      return _send.apply(this, a);
+    };
+  }
+
+  // SPA navigations (push/replace/popstate)
+  const onNav = () => {
+    // show briefly; if real network follows, fetch/XHR hooks keep it visible
+    show();
+    requestAnimationFrame(() => requestAnimationFrame(() => hide()));
+  };
+  const _push = history.pushState?.bind(history);
+  const _replace = history.replaceState?.bind(history);
+  if (_push) {
+  history.pushState = function (...a: [any, string, string?]) {
+    const r = _push(...a);
+    onNav();
+    return r;
+  } as typeof history.pushState;
+}
+
+if (_replace) {
+  history.replaceState = function (...a: [any, string, string?]) {
+    const r = _replace(...a);
+    onNav();
+    return r;
+  } as typeof history.replaceState;
+}
+  window.addEventListener('popstate', onNav);
+
+  // Full page unload
+  window.addEventListener('beforeunload', show);
+})();
