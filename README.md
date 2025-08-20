@@ -4,7 +4,7 @@
   <p align="center">An updated ChatGPT desktop client for Linux— forked from earlier community builds.</p>
 </p>
 
-![License](https://img.shields.io/badge/License-Apache%202-green.svg)
+![License](https://img.shields.io/badge/License-Apache%202-green.svg) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-chirv-orange?logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/chirv)
 
 ---
 
