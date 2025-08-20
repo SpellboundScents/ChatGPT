@@ -2,3 +2,4 @@
 *.tsx linguist-vendored
 *.scss linguist-vendored
 src/**/*.ts linguist-vendored
+README.md merge=ours
