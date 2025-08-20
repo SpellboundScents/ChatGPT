@@ -6,6 +6,9 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri_plugin_autostart::MacosLauncher;
 
+const VIRTUALIZER_JS: &str = include_str!("../injected/virtualizer.js");
+const VIRTUALIZER_LOADER_JS: &str = include_str!("../injected/virtualizer-loader.js");
+
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
   let tray = TrayIconBuilder::new()
     .on_tray_icon_event(|tray, event| {
@@ -52,11 +55,31 @@ fn main() {
           .build()?;
       }
 
-      // Make sure it’s visible & focused
-      if let Some(core) = app.get_webview_window("core") {
-        let _ = core.show();
-        let _ = core.set_focus();
-      }
+      // dev vs prod URL
+#[cfg(debug_assertions)]
+let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
+#[cfg(not(debug_assertions))]
+let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
+
+if app.get_webview_window("core").is_none() {
+  WebviewWindowBuilder::new(app, "core", url)
+    .title("ChatGPT")
+    .resizable(true)
+    .visible(true)
+    .initialization_script(VIRTUALIZER_JS)         // core API
+    .initialization_script(VIRTUALIZER_LOADER_JS)  // auto-select & install
+    .build()?;
+}
+
+    // Make sure it’s visible & focused
+    if let Some(core) = app.get_webview_window("core") {
+      let _ = core.show();
+      let _ = core.set_focus();
+
+    // (Optional) if the window already existed before you added the init script
+    // you can eval once right now so you don't have to reload:
+    let _ = core.eval(VIRTUALIZER_JS);
+}
 
       // Tray
       let _tray = build_tray(&app.handle())?;
