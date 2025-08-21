@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="180" src="./public/logo.png" alt="ChatGPT">
+  <img width="180" src="./public/project-logo.png" alt="ChatGPT">
   <h1 align="center">ChatGPT Desktop (Modern Fork)</h1>
   <p align="center">An updated ChatGPT desktop client for Linux — forked from earlier community builds.</p>
 </p>
