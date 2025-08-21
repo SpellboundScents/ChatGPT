@@ -5,6 +5,9 @@ mod conf;
 mod utils;
 
 use crate::conf::{get_chat_conf, set_chat_conf, reset_chat_conf};
+use crate::menu::{build_menu, handle_menu_event};
+use crate::utils::open_external;
+
 
 use tauri::{
   AppHandle, Builder, Manager, Result,
@@ -149,6 +152,7 @@ fn main() -> Result<()> {
       get_chat_conf,
       set_chat_conf,
       reset_chat_conf,
+      open_external,
     ])
 
     // build + run (this returns Result<()>)

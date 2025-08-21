@@ -3,6 +3,7 @@ use tauri::{AppHandle, Manager};
 use tauri::process;
 use tauri_plugin_updater::UpdaterExt;
 use tauri::Emitter; // <-- brings .emit() into scope for AppHandle/WebviewWindow
+use std::result::Result;
 
 
 // HOME dir (portable)
@@ -60,4 +61,8 @@ pub async fn run_check_update(app: AppHandle, silent: bool, _has_msg: Option<boo
 
 pub fn restart(app: &AppHandle) {
   let _ = process::restart(&app.env());
+}
+#[tauri::command]
+pub fn open_external(url: String) -> Result<(), String> {
+  tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|e| e.to_string())
 }

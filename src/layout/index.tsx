@@ -6,7 +6,7 @@ import { getName, getVersion } from '@tauri-apps/api/app';
 // import { open } from '@tauri-apps/plugin-opener';
 
 // import { runCheckUpdate } from '@tauri-apps/plugin-updater'; // <- removed for now
-// import { invoke } from '@tauri-apps/api/core'; // <- removed for now
+import { invoke } from '@tauri-apps/api/core';
 
 import useInit from '@/hooks/useInit';
 import Routes, { menuItems } from '@/routes';
@@ -72,14 +72,14 @@ export default function ChatLayout() {
           </div>
 
           <Menu
-            selectedKeys={selectedKeys}      // <- controlled
-            mode="inline"
-            theme={isDark ? 'dark' : 'light'}
-            inlineIndent={12}
-            items={menuItems as any}         // <- avoid AntD generic friction
-            // defaultOpenKeys={['/model']}   // <- remove until you add that route
-            onClick={onMenuClick}
-          />
+  selectedKeys={[location.pathname || '/config']}
+  mode="inline"
+  theme={isDark ? 'dark' : 'light'}
+  inlineIndent={12}
+  items={menuItems as any}
+  onClick={(i) => go(i.key)}
+/>
+
         </Sider>
 
         <Layout className="chat-layout" style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 300ms ease-out' }}>
@@ -96,13 +96,7 @@ export default function ChatLayout() {
   <Button
   type="primary"
   size="small"
-  onClick={async () => {
-    try {
-      await open('https://buymeacoffee.com/chirv');
-    } catch (e) {
-      console.error('open failed', e);
-    }
-  }}
+  onClick={() => invoke('open_external', { url: 'https://buymeacoffee.com/chirv' })}
   style={{ borderRadius: 999, padding: '0 12px' }}
 >
   ☕ Buy me a coffee
