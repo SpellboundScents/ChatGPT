@@ -2,6 +2,8 @@ use std::{env, fs, path::{Path, PathBuf}};
 use tauri::{AppHandle, Manager};
 use tauri::process;
 use tauri_plugin_updater::UpdaterExt;
+use tauri::Emitter; // <-- brings .emit() into scope for AppHandle/WebviewWindow
+
 
 // HOME dir (portable)
 fn user_home() -> PathBuf {

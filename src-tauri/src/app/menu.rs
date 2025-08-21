@@ -2,6 +2,7 @@ use tauri::{AppHandle, Manager};
 use tauri::menu::{Menu, MenuItem, Submenu, MenuEvent};
 use tauri::tray::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 use tauri_plugin_shell::ShellExt;
+use crate::app::control;
 
 // Build an application menu
 pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu> {
@@ -42,6 +43,25 @@ pub fn menu_handler(app: &AppHandle, event: MenuEvent) {
     "open_homepage" => {
       let _ = app.shell().open("https://chatgpt.com", None);
     }
+    _ => {}
+  }
+}
+
+// Configuration Menu Event Handler
+pub fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event_id: &str) {
+  match event_id {
+    "go_conf" | "open-control-center" => {
+      control::open_control_center(app);
+    }
+
+    // existing items...
+    "help-log" =>        { let _ = app.emit("open-chatgpt-log", ()); }
+    "help-update-log" => { let _ = app.emit("open-update-log", ()); }
+    "help-report-bug" => { let _ = tauri_plugin_opener::open_url(
+        "https://github.com/SpellboundScents/ChatGPT/issues/new",
+        None::<&str>
+      ); }
+
     _ => {}
   }
 }

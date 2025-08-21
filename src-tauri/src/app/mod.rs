@@ -3,3 +3,4 @@ pub mod fs_extra;
 pub mod menu;
 pub mod setup;
 pub mod window;
+pub mod control;

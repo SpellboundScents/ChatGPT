@@ -25,17 +25,19 @@ fn open_or_focus_config<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
   let url = WebviewUrl::App("index.html#/config".into());
 
   if app.get_webview_window("config").is_none() {
-    WebviewWindowBuilder::new(app, "config", url)
-      .title("Config")
-      .resizable(true)
-      .inner_size(760.0, 520.0)
-      .build()?;
+  let win = WebviewWindowBuilder::new(app, "config", url)
+    .title("Config")
+    .resizable(true)
+    .inner_size(760.0, 520.0)
+    .build()?;
+
+  #[cfg(debug_assertions)]
+  {
+    let _ = win.open_devtools();
+    let _ = win.show();
+    let _ = win.set_focus();
   }
-  if let Some(cfg) = app.get_webview_window("config") {
-    let _ = cfg.show();
-    let _ = cfg.set_focus();
-  }
-  Ok(())
+}
 }
 
 // ----- menu builders ---------------------------------------------------------

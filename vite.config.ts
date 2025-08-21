@@ -5,7 +5,12 @@ import tsconfigPaths from "vite-tsconfig-paths";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
-
+  resolve: {
+    alias: {
+      "@": "/src",
+      "@view": "/src/view",
+    },
+  },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   // prevent vite from obscuring rust errors
   clearScreen: false,

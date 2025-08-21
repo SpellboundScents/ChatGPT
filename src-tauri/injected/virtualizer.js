@@ -387,4 +387,56 @@
     window.addEventListener("popstate", onNav);
     window.addEventListener("beforeunload", show);
   })();
+  (function() {
+    const g = window;
+    if (g.__notice_bound) return;
+    const tauri = g.__TAURI__;
+    const listen = tauri?.event?.listen;
+    if (typeof listen !== "function") return;
+    g.__notice_bound = true;
+    function ensureToast() {
+      let el = document.getElementById("nick-notice");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "nick-notice";
+        el.style.cssText = [
+          "position:fixed",
+          "left:50%",
+          "bottom:16px",
+          "transform:translateX(-50%)",
+          "padding:10px 14px",
+          "border-radius:999px",
+          "font:600 13px system-ui,sans-serif",
+          "background:color-mix(in oklab, Canvas, CanvasText 10%)",
+          "color:CanvasText",
+          "box-shadow:0 8px 24px rgba(0,0,0,.20)",
+          "z-index:2147483647",
+          "display:none",
+          "pointer-events:none",
+          "max-width:80vw",
+          "white-space:nowrap",
+          "overflow:hidden",
+          "text-overflow:ellipsis"
+        ].join(";");
+        document.documentElement.appendChild(el);
+      }
+      return el;
+    }
+    listen("notice", (ev) => {
+      try {
+        const el = ensureToast();
+        el.textContent = String(ev?.payload ?? "");
+        el.style.display = "inline-block";
+        clearTimeout(el.__t);
+        el.__t = setTimeout(() => {
+          el.style.display = "none";
+        }, 3e3);
+      } catch {
+      }
+      try {
+        console.log("[notice]", ev?.payload);
+      } catch {
+      }
+    });
+  })();
 })();

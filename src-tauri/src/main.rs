@@ -1,14 +1,17 @@
-#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
+// src-tauri/src/main.rs  — Linux-only Tauri 2.8
 
 mod menu;
+mod conf;
+mod utils;
+
+use crate::conf::{get_chat_conf, set_chat_conf, reset_chat_conf};
 
 use tauri::{
-  AppHandle, Builder, Manager, PhysicalPosition, Result,
+  AppHandle, Builder, Manager, Result,
   WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry,
 };
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::webview::PageLoadEvent;
-use tauri_plugin_autostart::MacosLauncher;
 
 // ===== Loader overlay injectors (in-window, no extra windows) ===============
 const LOADER_INJECT_JS: &str = r#"
@@ -55,9 +58,8 @@ const LOADER_INJECT_JS: &str = r#"
 "#;
 
 const LOADER_SHOW_JS: &str = "try{(window.__loaderShow||new Function)()}catch(e){}";
-const LOADER_HIDE_JS: &str = "try{(window.__loaderHide||new Function)()}catch(e){}";
 
-// your injected scripts for the main webview
+// NOTE: paths are relative to THIS file. Ensure the files exist, or replace with .eval() strings.
 const VIRTUALIZER_JS: &str = include_str!("../injected/virtualizer.js");
 const VIRTUALIZER_LOADER_JS: &str = include_str!("../injected/virtualizer-loader.js");
 
@@ -67,7 +69,6 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
     .on_tray_icon_event(|tray, event| {
       if let tauri::tray::TrayIconEvent::Click { .. } = event {
         let app = tray.app_handle();
-        // focus the first app window we can find
         for w in app.webview_windows().values() {
           let _ = w.show();
           let _ = w.set_focus();
@@ -81,21 +82,19 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
 
 // ---- helpers ----------------------------------------------------------------
 fn any_app_window(app: &AppHandle) -> Option<WebviewWindow<Wry>> {
-  // just pick the first window (works even if label isn't "core")
   app.webview_windows().values().next().cloned()
 }
 
 // ---- app entry --------------------------------------------------------------
 fn main() -> Result<()> {
   Builder::default()
-    // plugins
+    // plugins (Linux-safe)
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
     .plugin(tauri_plugin_opener::init())
 
     // menubar
@@ -104,32 +103,27 @@ fn main() -> Result<()> {
 
     // in-window loader: inject on every navigation start, hide on finish
     .on_page_load(|window, payload| {
-  if window.label() == "splash" { return; }
-  match payload.event() {
-    PageLoadEvent::Started => {
-      // no-op: the virtualizer shows the loader immediately itself
-    }
-    PageLoadEvent::Finished => {
-      let _ = window.show();
-      let _ = window.set_focus();
-      // no-op: the virtualizer will hide on 'load' and via network watcher
-    }
-  }
-})
+      if window.label() == "splash" { return; }
+      match payload.event() {
+        PageLoadEvent::Started => {}
+        PageLoadEvent::Finished => {
+          let _ = window.show();
+          let _ = window.set_focus();
+        }
+        _ => {}
+      }
+    })
 
     .setup(|app| {
       // reuse existing window (from config) or create one
       let main = if let Some(existing) = any_app_window(&app.handle()) {
-        // make sure overlays exist right now
         let _ = existing.eval(LOADER_INJECT_JS);
         let _ = existing.eval(LOADER_SHOW_JS);
         let _ = existing.eval(VIRTUALIZER_JS);
         let _ = existing.eval(VIRTUALIZER_LOADER_JS);
-        // show the window (visible in taskbar/dock) — content will hide loader when first Finished fires
         let _ = existing.show();
         existing
       } else {
-        // create our own
         #[cfg(debug_assertions)]
         let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
         #[cfg(not(debug_assertions))]
@@ -138,23 +132,25 @@ fn main() -> Result<()> {
         WebviewWindowBuilder::new(app, "core", url)
           .title("ChatGPT")
           .resizable(true)
-          .visible(true) // visible immediately so user sees a window
-          .initialization_script(LOADER_INJECT_JS) // present at very first load
-          .initialization_script(LOADER_SHOW_JS)   // show immediately
+          .visible(true)
+          .initialization_script(LOADER_INJECT_JS)
+          .initialization_script(LOADER_SHOW_JS)
           .initialization_script(VIRTUALIZER_JS)
           .initialization_script(VIRTUALIZER_LOADER_JS)
           .build()?
       };
 
-      // small nicety: center the loader horizontally relative to window (in case of DPI/layout changes)
-      if let (Ok(pos), Ok(size)) = (main.outer_position(), main.outer_size()) {
-        // just log for debugging; overlay itself is CSS-centered
-        println!("[core] window at ({}, {}), size {}x{}", pos.x, pos.y, size.width, size.height);
-      }
-
-      // tray
       let _tray = build_tray(&app.handle())?;
       Ok(())
     })
+
+    // expose commands from `conf.rs`
+    .invoke_handler(tauri::generate_handler![
+      get_chat_conf,
+      set_chat_conf,
+      reset_chat_conf,
+    ])
+
+    // build + run (this returns Result<()>)
     .run(tauri::generate_context!())
 }
