@@ -12,9 +12,7 @@
   },
 
   "app": {
-    "security": {
-      "csp": null
-    },
+    "security": { "csp": null },
     "windows": [
       {
         "title": "ChatGPT",
@@ -33,35 +31,18 @@
   },
 
   "bundle": {
-  "active": true,
-  "category": "DeveloperTool",
-  "copyright": "",
-  "externalBin": [],
-  "icon": [
-    "icons/32x32.png",
-    "icons/128x128.png",
-    "icons/128x128@2x.png",
-    "icons/icon.icns",
-    "icons/icon.ico"
-    ],
-    "longDescription": "ChatGPT Desktop Application",
+    "active": true,
+    "category": "DeveloperTool",
     "shortDescription": "ChatGPT",
-    "targets": "all",
+    "longDescription": "ChatGPT Desktop Application",
+    "createUpdaterArtifacts": true,
+    "targets": ["deb", "rpm", "appimage", "nsis", "dmg"],
     "windows": {
-      "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": "",
-      "webviewInstallMode": {
-        "silent": true,
-        "type": "downloadBootstrapper"
-      }
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true }
     },
-    "linux": {
-      "deb": {
-        "depends": []
-      }
-      
-    },
+    "linux": { "deb": { "depends": [] } },
     "macOS": {
       "entitlements": null,
       "exceptionDomain": "",
@@ -80,24 +61,5 @@
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCOTAyNDI5Q0U3QkUwNDMKUldSRDRIdk9LU1NRTzcvcTA3Vm90ZWppVTJiSTVvR0ZPc3FQb1RqOGlTcXpkYk4ya2pEYTEyeUIK"
     }
-  },
-
-  
-  "bundle": { "createUpdaterArtifacts": true },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCOTAyNDI5Q0U3QkUwNDMKUldSRDRIdk9LU1NRTzcvcTA3Vm90ZWppVTJiSTVvR0ZPc3FQb1RqOGlTcXpkYk4ya2pEYTEyeUIK",
-      "endpoints": [
-        "https://github.com/SpellboundScents/ChatGPT/releases/latest/download/latest.json"
-      ]
-    },
-
-  "tauri": {
-    "security": {
-      "dangerousRemoteDomainIpcAccess": [
-        { "domain": "chatgpt.com", "enableTauriAPI": true }
-      ]
-    }
   }
-}
 }

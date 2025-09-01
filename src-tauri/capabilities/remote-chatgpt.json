@@ -1,0 +1,13 @@
+{
+  "identifier": "remote-chatgpt",
+  "description": "Allow chatgpt.com to access limited APIs in the core window",
+  "windows": ["core"],
+  "remote": {
+    "urls": ["https://chatgpt.com/*"]
+  },
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "fs:default"
+  ]
+}
