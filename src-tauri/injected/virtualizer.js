@@ -440,3 +440,225 @@
     });
   })();
 })();
+//Download Image Hook
+// === ChatGPT image download: iframe + shadow-root hardened (v5) =============
+(function () {
+  if (window.__tauri_dl_chatgpt_v5) return;
+  window.__tauri_dl_chatgpt_v5 = true;
+
+  const core = window.__TAURI__ && window.__TAURI__.core;
+  if (!core) { console.warn("[tauri] bridge missing; v5 disabled"); return; }
+
+  // --- tiny bridges (no ESM imports needed) ---
+  const saveDialog = (opts) => core.invoke("plugin:dialog|save", opts ?? {});
+  const writeFile  = (path, bytes) => core.invoke("plugin:fs|writeFile", {
+    path, contents: Array.from(bytes)
+  });
+
+  const fetchBytes = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    return new Uint8Array(await res.arrayBuffer());
+  };
+
+  const filenameFromUrl = (url, fallback = "image") => {
+    try {
+      const last = decodeURIComponent((url.split("/").pop() || "").split("?")[0]);
+      return (last || fallback).trim();
+    } catch { return fallback; }
+  };
+
+  const bestFromSrcset = (img) => {
+    if (!img) return null;
+    if (img.srcset) {
+      let best = null, w = -1;
+      img.srcset.split(",").forEach(part => {
+        const [u, size] = part.trim().split(/\s+/);
+        const ww = size?.endsWith("w") ? parseInt(size) : 0;
+        if (ww > w) { w = ww; best = u; }
+      });
+      if (best) return best;
+    }
+    return img.currentSrc || img.src || null;
+  };
+
+  function findCardFor(btn) {
+    // Tailwind group class can be encoded; try multiple fallbacks
+    return btn.closest(".group\\/imagegen-image, .group\\2f imagegen-image")
+        || btn.closest(".group/imagegen-image")
+        || btn.closest("[id^='image-']")
+        || btn.parentElement;
+  }
+
+  function findBestImageUrlFromCard(card) {
+    if (!card) return null;
+    // largest visible <img> inside the card
+    const imgs = Array.from(card.querySelectorAll("img[src]"));
+    if (imgs.length) {
+      imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
+      for (const img of imgs) {
+        const u = bestFromSrcset(img);
+        if (u) return u;
+      }
+    }
+    // CSS background fallback
+    const bg = getComputedStyle(card).backgroundImage;
+    const m = /url\(["']?(.+?)["']?\)/.exec(bg || "");
+    if (m) return m[1];
+    return null;
+  }
+
+  async function doSave(url) {
+    const dest = await saveDialog({
+      title: "Save image",
+      defaultPath: filenameFromUrl(url),
+      filters: [{ name: "Images", extensions: ["png","jpg","jpeg","webp","gif","svg"] }]
+    });
+    if (!dest) return;
+    try { (window.__loaderShow || Function)(); } catch {}
+    const bytes = await fetchBytes(url);
+    await writeFile(dest, bytes);
+  }
+
+  function bindButton(btn, originTag) {
+    if (!btn || btn.__tauriBound) return;
+    btn.__tauriBound = true;
+
+    const handler = (ev) => {
+      // beat page handlers and native behavior
+      if (typeof ev.stopImmediatePropagation === "function") ev.stopImmediatePropagation();
+      ev.stopPropagation();
+      ev.preventDefault();
+
+      const card = findCardFor(btn);
+      const url  = findBestImageUrlFromCard(card);
+      if (!url) { console.warn("[tauri] no image url near button", { originTag }); return; }
+      doSave(url).catch(e => alert("Could not save image: " + (e?.message || e)));
+    };
+
+    // bind early phases (some UIs listen on pointerdown)
+    btn.addEventListener("pointerdown", handler, { capture: true, passive: false });
+    btn.addEventListener("click",       handler, { capture: true, passive: false });
+  }
+
+  function scanRoot(root, originTag = "document") {
+    try {
+      const list = root.querySelectorAll?.('button[aria-label="Download this image"]');
+      if (list && list.length) list.forEach((b) => bindButton(b, originTag));
+    } catch (e) {
+      console.warn("[tauri] scanRoot failed", originTag, e);
+    }
+  }
+
+  function observeRoot(root, originTag = "document") {
+    scanRoot(root, originTag);
+
+    // Watch for newly rendered buttons
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) {
+        if (m.type !== "childList") continue;
+        for (const n of m.addedNodes) {
+          if (!(n instanceof Element)) continue;
+          if (n.matches?.('button[aria-label="Download this image"]')) bindButton(n, originTag);
+          // nested
+          const nested = n.querySelectorAll?.('button[aria-label="Download this image"]');
+          if (nested && nested.length) nested.forEach((b) => bindButton(b, originTag));
+          // also wire nested shadow roots if any appear
+          try { if (n.shadowRoot) wireShadowRoot(n.shadowRoot, originTag + "→shadow"); } catch {}
+        }
+      }
+    });
+    mo.observe(root, { subtree: true, childList: true });
+  }
+
+  function wireShadowRoot(sr, tag) {
+    if (!sr || sr.__tauriDlWired) return;
+    sr.__tauriDlWired = true;
+    observeRoot(sr, tag);
+  }
+
+  function wireIFrame(iframe, depth = 0) {
+    if (!iframe || iframe.__tauriDlWired) return;
+    iframe.__tauriDlWired = true;
+
+    const TAG = `[iframe d${depth}] ${iframe.src || "(about:blank)"}`;
+
+    const tryWire = () => {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) return setTimeout(tryWire, 120);
+        // Same-origin check: accessing .document would have thrown if cross-origin
+        observeRoot(doc, TAG);
+
+        // wire existing shadow roots inside the frame
+        try {
+          const allHosts = doc.querySelectorAll?.("*");
+          allHosts && allHosts.forEach((el) => { if (el.shadowRoot) wireShadowRoot(el.shadowRoot, TAG + "→shadow"); });
+        } catch {}
+
+        // Recurse into nested iframes (limit depth to avoid runaway)
+        if (depth < 4) {
+          const recScan = () => {
+            try {
+              const frames = Array.from(doc.querySelectorAll("iframe"));
+              frames.forEach((f) => wireIFrame(f, depth + 1));
+            } catch {}
+          };
+          recScan();
+          // watch for future frames
+          const mo = new MutationObserver(() => recScan());
+          mo.observe(doc.documentElement, { subtree: true, childList: true });
+        }
+
+        console.log("[tauri] wired", TAG);
+      } catch (e) {
+        // cross-origin: we can’t access the doc. Nothing to do here.
+        console.warn("[tauri] cross-origin iframe; skipping", TAG);
+      }
+    };
+
+    // Wire now (if ready) and on load
+    tryWire();
+    iframe.addEventListener("load", tryWire, { once: false, passive: true });
+  }
+
+  // Wire top document
+  observeRoot(document, "document");
+
+  // Wire existing shadow roots in top document
+  try {
+    document.querySelectorAll("*").forEach((el) => { if (el.shadowRoot) wireShadowRoot(el.shadowRoot, "document→shadow"); });
+  } catch {}
+
+  // Hook future shadow roots
+  const origAttachShadow = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function(init) {
+    const sr = origAttachShadow.apply(this, arguments);
+    queueMicrotask(() => wireShadowRoot(sr, "attachShadow"));
+    return sr;
+  };
+
+  // Wire all current iframes (same-origin only)
+  (function wireExistingIframes() {
+    try {
+      document.querySelectorAll("iframe").forEach((f) => wireIFrame(f, 0));
+    } catch {}
+  })();
+
+  // Watch for future iframes
+  const moFrames = new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type !== "childList") continue;
+      for (const n of m.addedNodes) {
+        if (!(n instanceof Element)) continue;
+        if (n.tagName === "IFRAME") wireIFrame(n, 0);
+        // nested frames inside subtree
+        const nested = n.querySelectorAll?.("iframe");
+        if (nested && nested.length) nested.forEach((f) => wireIFrame(f, 0));
+      }
+    }
+  });
+  moFrames.observe(document.documentElement, { subtree: true, childList: true });
+
+  console.log("[tauri] ChatGPT download override v5 (iframe+shadow) active");
+})();

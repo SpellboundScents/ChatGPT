@@ -90,6 +90,14 @@
       "endpoints": [
         "https://github.com/SpellboundScents/ChatGPT/releases/latest/download/latest.json"
       ]
+    },
+
+  "tauri": {
+    "security": {
+      "dangerousRemoteDomainIpcAccess": [
+        { "domain": "chatgpt.com", "enableTauriAPI": true }
+      ]
     }
   }
+}
 }
