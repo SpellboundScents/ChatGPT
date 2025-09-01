@@ -69,4 +69,4 @@ jobs:
           releaseDraft: false
           prerelease: true
           args: >
-            --bundles appimage deb rpm
+            --bundles deb rpm
