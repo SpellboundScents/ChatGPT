@@ -2,8 +2,17 @@
   "compilerOptions": {
     "composite": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
-    "allowSyntheticDefaultImports": true
+    "moduleResolution": "nodenext",
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  "include": [
+    "vite.config.*",
+    "vitest.config.*",
+    "eslint.config.*",
+    "postcss.config.*",
+    "scripts/**/*.ts",
+    "scripts/**/*.mjs"
+  ]
 }

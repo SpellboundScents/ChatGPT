@@ -1,27 +1,31 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
+
     "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
+
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@view/*": ["src/view/*"],
       "@comps/*": ["src/components/*"],
-      "@layout/*": ["src/layout/*"],
-    }
+      "@layout/*": ["src/layout/*"]
+    },
+    "types": ["vite/client"]
   },
   "include": ["src", "src-tauri/injected/virtualizer.js"],
   "references": [{ "path": "./tsconfig.node.json" }]
