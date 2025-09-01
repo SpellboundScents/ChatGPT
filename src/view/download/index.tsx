@@ -13,11 +13,15 @@ import { chatRoot, CHAT_DOWNLOAD_JSON } from '@/utils';
 import { downloadColumns } from './config';
 
 function renderFile(buff: Uint8Array, type: string) {
-  const renderType = {
-    pdf: 'application/pdf',
-    png: 'image/png',
-  }[type];
-  return URL.createObjectURL(new Blob([buff], { type: renderType }));
+  const renderType =
+    {
+      pdf: 'application/pdf',
+      png: 'image/png',
+    }[type] || 'application/octet-stream';
+
+  // FIX: convert Uint8Array<ArrayBufferLike> -> ArrayBuffer
+  const ab = buff.buffer.slice(buff.byteOffset, buff.byteOffset + buff.byteLength) as ArrayBuffer;
+  return URL.createObjectURL(new Blob([ab], { type: renderType }));
 }
 
 export default function Download() {
@@ -45,26 +49,40 @@ export default function Download() {
     (async () => {
       const record = opInfo?.opRecord;
       const isImg = ['png'].includes(record?.ext);
-      const file = await path.join(await chatRoot(), 'download', isImg ? 'img' : record?.ext, `${record?.id}.${record?.ext}`);
+      const file = await path.join(
+        await chatRoot(),
+        'download',
+        isImg ? 'img' : record?.ext,
+        `${record?.id}.${record?.ext}`,
+      );
+
       if (opInfo.opType === 'preview') {
         const data = await readFile(file);
         const sourceData = renderFile(data, record?.ext);
+
+        // If there was a previous object URL, revoke it to avoid leaks
+        if (source) URL.revokeObjectURL(source);
+
         setSource(sourceData);
         setVisible(true);
         return;
       }
+
       if (opInfo.opType === 'delete') {
         await remove(file);
         await handleRefresh();
       }
+
       if (opInfo.opType === 'rowedit') {
         const data = opReplace(opInfo?.opRecord?.[opSafeKey], opInfo?.opRecord);
         await updateJson(data);
         message.success('Name has been changed!');
       }
+
       opInfo.resetRecord();
-    })()
-  }, [opInfo.opType])
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opInfo.opType]);
 
   const handleDelete = async () => {
     if (opData?.length === selectedRows.length) {
@@ -80,7 +98,7 @@ export default function Download() {
       const file = await path.join(await chatRoot(), 'download', isImg ? 'img' : i?.ext, `${i?.id}.${i?.ext}`);
       await remove(file);
       return file;
-    })
+    });
     Promise.all(rows).then(async () => {
       await handleRefresh();
       message.success('All files selected are cleared!');
@@ -96,6 +114,11 @@ export default function Download() {
 
   const handleCancel = () => {
     setVisible(false);
+    // Revoke the object URL when closing the preview
+    if (source) {
+      URL.revokeObjectURL(source);
+      setSource('');
+    }
     opInfo.resetRecord();
   };
 
@@ -122,7 +145,12 @@ export default function Download() {
       </div>
       <div className="chat-table-tip">
         <div className="chat-file-path">
-          <div>PATH: <a onClick={() => openPath(downloadPath)} title={downloadPath}>{downloadPath}</a></div>
+          <div>
+            PATH:{' '}
+            <a onClick={() => openPath(downloadPath)} title={downloadPath}>
+              {downloadPath}
+            </a>
+          </div>
         </div>
       </div>
       <Table
@@ -133,15 +161,9 @@ export default function Download() {
         rowSelection={rowSelection}
         pagination={TABLE_PAGINATION}
       />
-      <Modal
-        open={isVisible}
-        title={<div>{opInfo?.opRecord?.name || ''}</div>}
-        onCancel={handleCancel}
-        footer={false}
-        destroyOnClose
-      >
+      <Modal open={isVisible} title={<div>{opInfo?.opRecord?.name || ''}</div>} onCancel={handleCancel} footer={false} destroyOnClose>
         <img style={{ maxWidth: '100%' }} src={source} />
       </Modal>
     </div>
-  )
+  );
 }
