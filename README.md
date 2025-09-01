@@ -10,7 +10,7 @@
 
 ## 📖 About This Fork
 
-This repository is a **modern fork** of [isaccanedo/ChatGPT](https://github.com/isaccanedo/ChatGPT), which itself was forked from the original [lencx/ChatGPT](https://github.com/lencx/ChatGPT).  
+This repository is originally a **modernized fork** of [lencx/ChatGPT](https://github.com/lencx/ChatGPT). It has been re-written in Tauri 2, and most of the original features are being re-implemented.
 
 The upstream forks created excellent cross-platform desktop clients for [OpenAI’s ChatGPT](https://chat.openai.com).  
 This fork carries that lineage forward with a **Linux-only focus** and these goals:
