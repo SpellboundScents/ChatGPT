@@ -8,13 +8,6 @@
 
 ---
 
-⚠️ **You are viewing the `dev` branch.**  
-This branch is used for **active development and new feature testing**.  
-Features here may be **unfinished, unstable, or non-functional**.  
-If you’re looking for the most stable version, please check the [main branch](https://github.com/SpellboundScents/ChatGPT/tree/main).
-
----
-
 ## 📖 About This Fork
 
 This repository is a **modern fork** of [isaccanedo/ChatGPT](https://github.com/isaccanedo/ChatGPT), which itself was forked from the original [lencx/ChatGPT](https://github.com/lencx/ChatGPT).  
