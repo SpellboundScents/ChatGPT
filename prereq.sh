@@ -41,8 +41,9 @@ case "$PKG" in
   apt)
     $SUDO apt update -y
     $SUDO apt install -y \
-      build-essential curl git pkg-config ca-certificates \
-      libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+  build-essential curl git pkg-config ca-certificates \
+  libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev \
+  libwebkit2gtk-4.1-dev || $SUDO apt install -y libwebkit2gtk-4.0-dev
     ;;
   dnf)
     # Fedora / RHEL (with dnf)
