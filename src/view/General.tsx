@@ -140,7 +140,14 @@ export default function General() {
             onChange={async (e) => {
               const v = String(e.target.value || 'system').toLowerCase();
               form.setFieldValue('theme', v);
+
+              // 1) call the global setter (immediate, no event plumbing needed)
+              (window as any).__setTheme?.(v);
+
+              // 2) also emit, in case you keep the event-based flow
               try { await emit('menu-set-theme', v); } catch {}
+
+              console.log('[theme] General onChange ->', v);
             }}
           >
             <Radio value="light">Light</Radio>

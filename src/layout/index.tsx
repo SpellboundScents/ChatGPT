@@ -72,6 +72,18 @@ export default function ChatLayout() {
     return () => { unlisten.then(u => u()); };
   }, []);
   
+  // expose a global for quick, deterministic theming from any window
+useEffect(() => {
+  (window as any).__setTheme = (v: string) => {
+    const t = String(v || 'system').toLowerCase();
+    if (t === 'light' || t === 'dark' || t === 'system') {
+      setAppInfo(prev => ({ ...prev, appTheme: t as any }));
+      console.log('[theme] __setTheme ->', t);
+    }
+  };
+  return () => { try { delete (window as any).__setTheme; } catch {} };
+}, []);
+
   return (
     <ConfigProvider theme={{ algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm }}>
       <Layout style={{ minHeight: '100vh' }} hasSider>
