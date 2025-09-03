@@ -2,29 +2,35 @@ use std::{env, fs, path::{Path, PathBuf}};
 use tauri::{AppHandle, Manager, Theme};
 use tauri::process;
 use tauri_plugin_updater::UpdaterExt;
-use tauri::Emitter; // <-- brings .emit() into scope for AppHandle/WebviewWindow
+use tauri::Emitter; 
 use std::result::Result;
+use crate::conf::ChatConfJson; 
 
 #[tauri::command]
 pub fn set_theme_all(app: AppHandle, theme: String) -> Result<(), String> {
   let t = theme.to_lowercase();
-  let native = match t.as_str() {
-    "dark" => Theme::Dark,
-    "light" => Theme::Light,
-    _ => Theme::Dark, // or Theme::Light/Theme::System as you prefer
+
+  // Map to native theme; "system" => None (follow system)
+  let native: Option<Theme> = match t.as_str() {
+    "dark" => Some(Theme::Dark),
+    "light" => Some(Theme::Light),
+    _ => None, // "system" or anything else
   };
 
-  // 1) Apply native theme to every window (affects core + config chrome)
+  // 1) Apply native theme to every window (core + config)
   for w in app.webview_windows().values() {
-    let _ = w.set_theme(Some(native));
+    let _ = w.set_theme(native);
   }
 
-  // 2) Tell our React UI windows to update their AntD theme (payload-based)
+  // 2) Broadcast to all webviews so React UIs flip immediately
   for w in app.webview_windows().values() {
     let _ = w.emit("menu-set-theme", &t);
   }
 
-  Ok(())
+  // 3) Persist to disk
+  let mut conf = ChatConfJson::load();
+  conf.theme = t.clone(); // "light" | "dark" | "system"
+  conf.save().map_err(|e| e.to_string())
 }
 
 // HOME dir (portable)

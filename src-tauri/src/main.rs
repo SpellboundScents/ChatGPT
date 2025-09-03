@@ -4,14 +4,14 @@ mod menu;
 mod conf;
 mod utils;
 
-use crate::conf::{get_chat_conf, set_chat_conf, reset_chat_conf};
+use crate::conf::{get_chat_conf, set_chat_conf, reset_chat_conf, ChatConfJson};
 use crate::menu::{build_menu, handle_menu_event};
 use crate::utils::open_external;
 
 
 use tauri::{
   AppHandle, Builder, Manager, Result,
-  WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry,
+  WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry, Theme, Emitter,
 };
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::webview::PageLoadEvent;
@@ -118,35 +118,50 @@ fn main() -> Result<()> {
       }
     })
 
-    .setup(|app| {
-      // reuse existing window (from config) or create one
-      let main = if let Some(existing) = any_app_window(&app.handle()) {
-        let _ = existing.eval(LOADER_INJECT_JS);
-        let _ = existing.eval(LOADER_SHOW_JS);
-        let _ = existing.eval(VIRTUALIZER_JS);
-        let _ = existing.eval(VIRTUALIZER_LOADER_JS);
-        let _ = existing.show();
-        existing
-      } else {
-        #[cfg(debug_assertions)]
-        let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
-        #[cfg(not(debug_assertions))]
-        let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
+   .setup(|app| {
+  // reuse existing window (from config) or create one
+  let _main = if let Some(existing) = any_app_window(&app.handle()) {
+    let _ = existing.eval(LOADER_INJECT_JS);
+    let _ = existing.eval(LOADER_SHOW_JS);
+    let _ = existing.eval(VIRTUALIZER_JS);
+    let _ = existing.eval(VIRTUALIZER_LOADER_JS);
+    let _ = existing.show();
+    existing
+  } else {
+    #[cfg(debug_assertions)]
+    let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
+    #[cfg(not(debug_assertions))]
+    let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
 
-        WebviewWindowBuilder::new(app, "core", url)
-          .title("ChatGPT")
-          .resizable(true)
-          .visible(true)
-          .initialization_script(LOADER_INJECT_JS)
-          .initialization_script(LOADER_SHOW_JS)
-          .initialization_script(VIRTUALIZER_JS)
-          .initialization_script(VIRTUALIZER_LOADER_JS)
-          .build()?
-      };
+    WebviewWindowBuilder::new(app, "core", url)
+      .title("ChatGPT")
+      .resizable(true)
+      .visible(true)
+      .initialization_script(LOADER_INJECT_JS)
+      .initialization_script(LOADER_SHOW_JS)
+      .initialization_script(VIRTUALIZER_JS)
+      .initialization_script(VIRTUALIZER_LOADER_JS)
+      .build()?
+  };
 
-      let _tray = build_tray(&app.handle())?;
-      Ok(())
-    })
+  // tray
+  let _tray = build_tray(&app.handle())?;
+
+  // ── Apply saved theme to ALL windows and broadcast to React UIs ───────────
+  let saved = ChatConfJson::load().theme.to_lowercase();
+  let native = match saved.as_str() {
+    "dark" => Some(Theme::Dark),
+    "light" => Some(Theme::Light),
+    _ => None, // system
+  };
+  for w in app.webview_windows().values() {
+    let _ = w.set_theme(native);
+    let _ = w.emit("menu-set-theme", &saved);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  Ok(())
+})
 
     // expose commands from `conf.rs`
     .invoke_handler(tauri::generate_handler![
