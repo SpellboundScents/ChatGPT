@@ -28,3 +28,7 @@ initial fork
 - Chats only paint messages in viewport
 - Messages now always nest at bottom
 - Downloads go directly to ~/Downloads
+
+## v1.1.0-rc.2
+- Wired in updater
+- Configured dark mode toggles

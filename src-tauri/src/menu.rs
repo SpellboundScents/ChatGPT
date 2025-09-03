@@ -1,14 +1,16 @@
 use tauri::{
   menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
-  AppHandle, Manager, Runtime, Theme, WebviewUrl, WebviewWindowBuilder, Emitter,
+  AppHandle, Emitter, Manager, Runtime, Theme, WebviewUrl, WebviewWindowBuilder,
 };
+use tauri_plugin_updater::UpdaterExt;
 
-// ---------- helpers ----------
+// ───────────── helpers ─────────────
+
 fn open_or_focus_config<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
   #[cfg(debug_assertions)]
-  let url = tauri::WebviewUrl::External("http://localhost:1420/#/config".parse().unwrap());
+  let url = WebviewUrl::External("http://localhost:1420/#/config".parse().unwrap());
   #[cfg(not(debug_assertions))]
-  let url = tauri::WebviewUrl::App("index.html#/config".into());
+  let url = WebviewUrl::App("index.html#/config".into());
 
   if app.get_webview_window("config").is_none() {
     let win = WebviewWindowBuilder::new(app, "config", url)
@@ -17,8 +19,6 @@ fn open_or_focus_config<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
       .inner_size(900.0, 830.0)
       .min_inner_size(720.0, 620.0)
       .build()?;
-    // #[cfg(debug_assertions)]
-    // { let _ = win.open_devtools(); }
     let _ = win.show();
     let _ = win.set_focus();
   } else if let Some(win) = app.get_webview_window("config") {
@@ -34,7 +34,8 @@ fn apply_theme_to_all<R: Runtime>(app: &AppHandle<R>, theme: Theme) {
   }
 }
 
-// ---------- UI: visible menu ----------
+// ───────────── UI: menu structure ─────────────
+
 pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
   // ChatGPT
   let chatgpt = Submenu::with_items(app, "ChatGPT", true, &[
@@ -68,10 +69,44 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
   Menu::with_items(app, &[&chatgpt, &preferences, &view, &help])
 }
 
-// ---------- handlers: UI-only today ----------
+// ───────────── handlers ─────────────
+
 pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
   match event.id().as_ref() {
-    "pref-open-config" => { let _ = open_or_focus_config(app); }
+    "check-updates" => {
+      let appc = app.clone();
+      tauri::async_runtime::spawn(async move {
+        if let Ok(updater) = appc.updater() {
+          match updater.check().await {
+            Ok(Some(update)) => {
+              let _ = appc.emit("notice", "Downloading update…");
+              let _ = update
+                .download_and_install(
+                  |_chunk, _total| { /* optional progress */ },
+                  || { let _ = appc.emit("notice", "Installing update…"); }
+                )
+                .await;
+              let _ = appc.emit("notice", "Update installed. Restarting…");
+              tauri::process::restart(&appc.env());
+            }
+            Ok(None) => {
+              let _ = appc.emit("notice", "You’re up to date.");
+            }
+            Err(e) => {
+              let _ = appc.emit("notice", format!("Update check failed: {e}"));
+              eprintln!("Update check failed: {e}");
+            }
+          }
+        } else {
+          let _ = appc.emit("notice", "Updater not available.");
+        }
+      });
+    }
+
+    "pref-open-config" => {
+      let _ = open_or_focus_config(app);
+    }
+
     "toggle-darkmode" => {
       let current = app.get_webview_window("core").and_then(|w| w.theme().ok());
       let next = match current {
@@ -79,9 +114,9 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         _ => Theme::Dark,
       };
       apply_theme_to_all(app, next);
-let _ = app.emit("menu-toggle-dark", ());  // <— tell frontend too
+      let _ = app.emit("menu-toggle-dark", ());
     }
-    // keep the rest as visual-only (no-op for now)
+
     _ => {}
   }
 }

@@ -16,28 +16,34 @@ type AppTheme = 'light' | 'dark' | 'system';
 
 export default function ChatLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [appInfo, setAppInfo] = useState<{ appName?: string; appVersion?: string; appTheme: AppTheme }>({ appTheme: 'system' });
+
   const location = useLocation();
   const go = useNavigate();
 
-  // initialize app name/version + default theme
-  useInit(async () => {
+  // initialize app name/version
+ // initialize app name/version
+useInit(async () => {
+  try {
+    const info = await invoke<{ name: string; version: string }>('get_app_info');
+    setAppInfo(prev => ({ ...prev, appName: info.name, appVersion: info.version, appTheme: prev.appTheme ?? 'system' }));
+  } catch {
+    // fallback (shouldn't be needed, but safe)
     const [appName, appVersion] = await Promise.all([getName(), getVersion()]);
     setAppInfo(prev => ({ ...prev, appName, appVersion, appTheme: prev.appTheme ?? 'system' }));
-  });
+  }
+});
 
-  // listen for the native menu "toggle" (optional)
+  // menubar "toggle" event (optional)
   useEffect(() => {
     const unlisten = listen('menu-toggle-dark', () => {
-      setAppInfo(prev => ({ 
-        ...prev, 
-        appTheme: prev.appTheme === 'dark' ? 'light' : 'dark' 
-      }));
+      setAppInfo(prev => ({ ...prev, appTheme: prev.appTheme === 'dark' ? 'light' : 'dark' }));
     });
     return () => { unlisten.then(u => u()); };
   }, []);
 
-  // listen for explicit theme set from Config page (deterministic)
+  // deterministic theme-set event
   useEffect(() => {
     const unlisten = listen<string>('menu-set-theme', (e) => {
       const v = String(e?.payload || 'system').toLowerCase() as AppTheme;
@@ -48,7 +54,7 @@ export default function ChatLayout() {
     return () => { unlisten.then(u => u()); };
   }, []);
 
-  // system dark detection (single definition)
+  // system dark detection
   const isSystemDark = useMemo(() => {
     return typeof window !== 'undefined'
       && !!window.matchMedia
@@ -57,32 +63,33 @@ export default function ChatLayout() {
 
   const isDark = appInfo.appTheme === 'dark' || (appInfo.appTheme === 'system' && isSystemDark);
 
+  // updater button handler
+  const checkAppUpdate = async () => {
+    if (updating) return;
+    setUpdating(true);
+    try {
+      await invoke('run_check_update', { silent: false, hasMsg: true });
+    } catch (e) {
+      console.error('update check failed', e);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const selectedKeys = [location.pathname || '/config'];
   const onMenuClick = (i: { key: string }) => go(i.key);
 
-  // ✅ Listen for theme set from Config window (payload-based)
+  // small global for ad-hoc testing (optional)
   useEffect(() => {
-    const unlisten = listen<string>('menu-set-theme', (e) => {
-      console.log("Received set-theme", e.payload); // debug
-      const v = String(e?.payload || 'system').toLowerCase();
-      if (v === 'light' || v === 'dark' || v === 'system') {
-        setAppInfo(prev => ({ ...prev, appTheme: v as 'light'|'dark'|'system' }));
+    (window as any).__setTheme = (v: string) => {
+      const t = String(v || 'system').toLowerCase();
+      if (t === 'light' || t === 'dark' || t === 'system') {
+        setAppInfo(prev => ({ ...prev, appTheme: t as AppTheme }));
+        console.log('[theme] __setTheme ->', t);
       }
-    });
-    return () => { unlisten.then(u => u()); };
+    };
+    return () => { try { delete (window as any).__setTheme; } catch {} };
   }, []);
-  
-  // expose a global for quick, deterministic theming from any window
-useEffect(() => {
-  (window as any).__setTheme = (v: string) => {
-    const t = String(v || 'system').toLowerCase();
-    if (t === 'light' || t === 'dark' || t === 'system') {
-      setAppInfo(prev => ({ ...prev, appTheme: t as any }));
-      console.log('[theme] __setTheme ->', t);
-    }
-  };
-  return () => { try { delete (window as any).__setTheme; } catch {} };
-}, []);
 
   return (
     <ConfigProvider theme={{ algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm }}>
@@ -98,11 +105,13 @@ useEffect(() => {
           <div className="chat-info">
             <Tag>{appInfo.appName}</Tag>
             <Tag>
-              <span style={{ marginRight: 5 }}>{appInfo.appVersion}</span>
-              <Tooltip title="click to check update">
-                <a onClick={() => {/* wire updater later */}}><SyncOutlined /></a>
-              </Tooltip>
-            </Tag>
+            <span style={{ marginRight: 5 }}>{appInfo.appVersion}</span>
+            <Tooltip title={updating ? 'Checking…' : 'Click to check update'}>
+              <a onClick={checkAppUpdate} aria-busy={updating} aria-label="Check for updates">
+                <SyncOutlined spin={updating} />
+              </a>
+            </Tooltip>
+          </Tag>
           </div>
 
           <Menu

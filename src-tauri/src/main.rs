@@ -1,27 +1,24 @@
-// src-tauri/src/main.rs  — Linux-only Tauri 2.8
+#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 mod menu;
 mod conf;
 mod utils;
 
-use crate::conf::{get_chat_conf, set_chat_conf, reset_chat_conf, ChatConfJson};
+use crate::conf::{get_chat_conf, reset_chat_conf, set_chat_conf, ChatConfJson};
 use crate::menu::{build_menu, handle_menu_event};
-use crate::utils::open_external;
-
+use crate::utils::{open_external, run_check_update, set_theme_all, get_app_info};
 
 use tauri::{
-  AppHandle, Builder, Manager, Result,
-  WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry, Theme, Emitter,
+  AppHandle, Builder, Emitter, Manager, Result, Theme,
+  WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry,
 };
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::webview::PageLoadEvent;
-use crate::utils::set_theme_all;
 
-// ===== Loader overlay injectors (in-window, no extra windows) ===============
+// ===== Loader overlay injectors =============================================
 const LOADER_INJECT_JS: &str = r#"
 (function(){
   if (window.__nick_loader_init) return; window.__nick_loader_init = true;
-
   function ensureStyle(){
     if (document.getElementById('nick-loader-style')) return;
     const s = document.createElement('style'); s.id='nick-loader-style';
@@ -41,29 +38,22 @@ const LOADER_INJECT_JS: &str = r#"
     `;
     document.head.appendChild(s);
   }
-
   function ensureNode(){
     if (document.getElementById('nick-loader')) return;
-    const d = document.createElement('div'); d.id='nick-loader'; d.setAttribute('aria-busy','true'); d.setAttribute('aria-live','polite');
+    const d = document.createElement('div'); d.id='nick-loader';
+    d.setAttribute('aria-busy','true'); d.setAttribute('aria-live','polite');
     d.innerHTML = '<svg width="28" height="28" viewBox="0 0 18 18" role="img" aria-label="Loading">'
       + '<circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2" opacity=".15"/>'
       + '<path class="arc" d="M9 2 a7 7 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
       + '<span>Loading…</span>';
     document.documentElement.appendChild(d);
   }
-
-  window.__loaderShow = function(){
-    try{ ensureStyle(); ensureNode(); const n=document.getElementById('nick-loader'); if(n) n.style.display='inline-flex'; }catch(e){}
-  };
-  window.__loaderHide = function(){
-    try{ const n=document.getElementById('nick-loader'); if(n) n.style.display='none'; }catch(e){}
-  };
+  window.__loaderShow = function(){ try{ ensureStyle(); ensureNode(); const n=document.getElementById('nick-loader'); if(n) n.style.display='inline-flex'; }catch(e){} };
+  window.__loaderHide = function(){ try{ const n=document.getElementById('nick-loader'); if(n) n.style.display='none'; }catch(e){} };
 })();
 "#;
 
 const LOADER_SHOW_JS: &str = "try{(window.__loaderShow||new Function)()}catch(e){}";
-
-// NOTE: paths are relative to THIS file. Ensure the files exist, or replace with .eval() strings.
 const VIRTUALIZER_JS: &str = include_str!("../injected/virtualizer.js");
 const VIRTUALIZER_LOADER_JS: &str = include_str!("../injected/virtualizer-loader.js");
 
@@ -102,10 +92,10 @@ fn main() -> Result<()> {
     .plugin(tauri_plugin_opener::init())
 
     // menubar
-    .menu(|app| menu::build_menu(app))
-    .on_menu_event(|app, event| menu::handle_menu_event(app, event))
+    .menu(|app| build_menu(app))
+    .on_menu_event(|app, event| handle_menu_event(app, event))
 
-    // in-window loader: inject on every navigation start, hide on finish
+    // per-navigation hooks
     .on_page_load(|window, payload| {
       if window.label() == "splash" { return; }
       match payload.event() {
@@ -118,60 +108,60 @@ fn main() -> Result<()> {
       }
     })
 
-   .setup(|app| {
-  // reuse existing window (from config) or create one
-  let _main = if let Some(existing) = any_app_window(&app.handle()) {
-    let _ = existing.eval(LOADER_INJECT_JS);
-    let _ = existing.eval(LOADER_SHOW_JS);
-    let _ = existing.eval(VIRTUALIZER_JS);
-    let _ = existing.eval(VIRTUALIZER_LOADER_JS);
-    let _ = existing.show();
-    existing
-  } else {
-    #[cfg(debug_assertions)]
-    let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
-    #[cfg(not(debug_assertions))]
-    let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
+    .setup(|app| {
+      // reuse existing window or create one
+      let _main = if let Some(existing) = any_app_window(&app.handle()) {
+        let _ = existing.eval(LOADER_INJECT_JS);
+        let _ = existing.eval(LOADER_SHOW_JS);
+        let _ = existing.eval(VIRTUALIZER_JS);
+        let _ = existing.eval(VIRTUALIZER_LOADER_JS);
+        let _ = existing.show();
+        existing
+      } else {
+        #[cfg(debug_assertions)]
+        let url = WebviewUrl::External("http://localhost:1420".parse().unwrap());
+        #[cfg(not(debug_assertions))]
+        let url = WebviewUrl::External("https://chatgpt.com".parse().unwrap());
 
-    WebviewWindowBuilder::new(app, "core", url)
-      .title("ChatGPT")
-      .resizable(true)
-      .visible(true)
-      .initialization_script(LOADER_INJECT_JS)
-      .initialization_script(LOADER_SHOW_JS)
-      .initialization_script(VIRTUALIZER_JS)
-      .initialization_script(VIRTUALIZER_LOADER_JS)
-      .build()?
-  };
+        WebviewWindowBuilder::new(app, "core", url)
+          .title("ChatGPT")
+          .resizable(true)
+          .visible(true)
+          .initialization_script(LOADER_INJECT_JS)
+          .initialization_script(LOADER_SHOW_JS)
+          .initialization_script(VIRTUALIZER_JS)
+          .initialization_script(VIRTUALIZER_LOADER_JS)
+          .build()?
+      };
 
-  // tray
-  let _tray = build_tray(&app.handle())?;
+      // tray
+      let _tray = build_tray(&app.handle())?;
 
-  // ── Apply saved theme to ALL windows and broadcast to React UIs ───────────
-  let saved = ChatConfJson::load().theme.to_lowercase();
-  let native = match saved.as_str() {
-    "dark" => Some(Theme::Dark),
-    "light" => Some(Theme::Light),
-    _ => None, // system
-  };
-  for w in app.webview_windows().values() {
-    let _ = w.set_theme(native);
-    let _ = w.emit("menu-set-theme", &saved);
-  }
-  // ──────────────────────────────────────────────────────────────────────────
+      // Load saved theme and apply at startup (native + React broadcast)
+      let saved = ChatConfJson::load().theme.to_lowercase();
+      let native = match saved.as_str() {
+        "dark" => Some(Theme::Dark),
+        "light" => Some(Theme::Light),
+        _ => None, // system
+      };
+      for w in app.webview_windows().values() {
+        let _ = w.set_theme(native);
+        let _ = w.emit("menu-set-theme", &saved);
+      }
 
-  Ok(())
-})
+      Ok(())
+    })
 
-    // expose commands from `conf.rs`
+    // commands
     .invoke_handler(tauri::generate_handler![
       get_chat_conf,
       set_chat_conf,
       reset_chat_conf,
       open_external,
       set_theme_all,
+      run_check_update,
+      get_app_info,
     ])
 
-    // build + run (this returns Result<()>)
     .run(tauri::generate_context!())
 }
