@@ -1,6 +1,6 @@
 use tauri::{
   menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
-  AppHandle, Manager, Runtime, Theme, WebviewUrl, WebviewWindowBuilder,
+  AppHandle, Manager, Runtime, Theme, WebviewUrl, WebviewWindowBuilder, Emitter,
 };
 
 // ---------- helpers ----------
@@ -79,6 +79,7 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         _ => Theme::Dark,
       };
       apply_theme_to_all(app, next);
+let _ = app.emit("menu-toggle-dark", ());  // <— tell frontend too
     }
     // keep the rest as visual-only (no-op for now)
     _ => {}

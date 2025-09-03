@@ -3,10 +3,8 @@ import { Layout, Menu, Tooltip, ConfigProvider, theme, Tag, Button } from 'antd'
 import { SyncOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getName, getVersion } from '@tauri-apps/api/app';
-// import { open } from '@tauri-apps/plugin-opener';
-
-// import { runCheckUpdate } from '@tauri-apps/plugin-updater'; // <- removed for now
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 import useInit from '@/hooks/useInit';
 import Routes, { menuItems } from '@/routes';
@@ -14,36 +12,66 @@ import './index.scss';
 
 const { Content, Footer, Sider } = Layout;
 
+type AppTheme = 'light' | 'dark' | 'system';
+
 export default function ChatLayout() {
   const [collapsed, setCollapsed] = useState(false);
-  const [appInfo, setAppInfo] = useState<{ appName?: string; appVersion?: string; appTheme?: string }>({});
+  const [appInfo, setAppInfo] = useState<{ appName?: string; appVersion?: string; appTheme: AppTheme }>({ appTheme: 'system' });
   const location = useLocation();
   const go = useNavigate();
 
-  // Step 5 handled here (no backend theme): system fallback
+  // initialize app name/version + default theme
   useInit(async () => {
     const [appName, appVersion] = await Promise.all([getName(), getVersion()]);
-    setAppInfo({ appName, appVersion, appTheme: 'system' });
+    setAppInfo(prev => ({ ...prev, appName, appVersion, appTheme: prev.appTheme ?? 'system' }));
   });
 
-  const checkAppUpdate = async () => {
-    // If you have a Rust command, call it; otherwise wire @tauri-apps/plugin-updater later
-    // await invoke('run_check_update', { silent: false, hasMsg: true });
-  };
-
-  // System dark detection (no backend)
-  const isSystemDark = useMemo(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // listen for the native menu "toggle" (optional)
+  useEffect(() => {
+    const unlisten = listen('menu-toggle-dark', () => {
+      setAppInfo(prev => ({ 
+        ...prev, 
+        appTheme: prev.appTheme === 'dark' ? 'light' : 'dark' 
+      }));
+    });
+    return () => { unlisten.then(u => u()); };
   }, []);
+
+  // listen for explicit theme set from Config page (deterministic)
+  useEffect(() => {
+    const unlisten = listen<string>('menu-set-theme', (e) => {
+      const v = String(e?.payload || 'system').toLowerCase() as AppTheme;
+      if (v === 'light' || v === 'dark' || v === 'system') {
+        setAppInfo(prev => ({ ...prev, appTheme: v }));
+      }
+    });
+    return () => { unlisten.then(u => u()); };
+  }, []);
+
+  // system dark detection (single definition)
+  const isSystemDark = useMemo(() => {
+    return typeof window !== 'undefined'
+      && !!window.matchMedia
+      && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }, []);
+
   const isDark = appInfo.appTheme === 'dark' || (appInfo.appTheme === 'system' && isSystemDark);
 
-  // Keep selection in sync even on initial render
   const selectedKeys = [location.pathname || '/config'];
-
-  // Ensure clicking a menu item navigates to its key (which is the path)
   const onMenuClick = (i: { key: string }) => go(i.key);
 
+  // ✅ Listen for theme set from Config window (payload-based)
+  useEffect(() => {
+    const unlisten = listen<string>('menu-set-theme', (e) => {
+      console.log("Received set-theme", e.payload); // debug
+      const v = String(e?.payload || 'system').toLowerCase();
+      if (v === 'light' || v === 'dark' || v === 'system') {
+        setAppInfo(prev => ({ ...prev, appTheme: v as 'light'|'dark'|'system' }));
+      }
+    });
+    return () => { unlisten.then(u => u()); };
+  }, []);
+  
   return (
     <ConfigProvider theme={{ algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm }}>
       <Layout style={{ minHeight: '100vh' }} hasSider>
@@ -52,13 +80,7 @@ export default function ChatLayout() {
           collapsible
           collapsed={collapsed}
           onCollapse={setCollapsed}
-          style={{
-            overflow: 'auto',
-            height: '100vh',
-            position: 'fixed',
-            left: 0, top: 0, bottom: 0,
-            zIndex: 999,
-          }}
+          style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 999 }}
         >
           <div className="chat-logo"><img src="/logo.png" /></div>
           <div className="chat-info">
@@ -66,20 +88,19 @@ export default function ChatLayout() {
             <Tag>
               <span style={{ marginRight: 5 }}>{appInfo.appVersion}</span>
               <Tooltip title="click to check update">
-                <a onClick={checkAppUpdate}><SyncOutlined /></a>
+                <a onClick={() => {/* wire updater later */}}><SyncOutlined /></a>
               </Tooltip>
             </Tag>
           </div>
 
           <Menu
-  selectedKeys={[location.pathname || '/config']}
-  mode="inline"
-  theme={isDark ? 'dark' : 'light'}
-  inlineIndent={12}
-  items={menuItems as any}
-  onClick={(i) => go(i.key)}
-/>
-
+            selectedKeys={selectedKeys}
+            mode="inline"
+            theme={isDark ? 'dark' : 'light'}
+            inlineIndent={12}
+            items={menuItems as any}
+            onClick={onMenuClick}
+          />
         </Sider>
 
         <Layout className="chat-layout" style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 300ms ease-out' }}>
@@ -87,24 +108,20 @@ export default function ChatLayout() {
             <Routes />
           </Content>
           <Footer style={{ textAlign: 'center' }}>
-  <div style={{ marginBottom: 8 }}>
-    <a href="https://github.com/SpellboundScents/chatgpt" target="_blank" rel="noreferrer">
-      ChatGPT Desktop Application
-    </a> ©2022 lencx, ©2025 chirv
-  </div>
-
-  <Button
-  type="primary"
-  size="small"
-  onClick={() => invoke('open_external', { url: 'https://buymeacoffee.com/chirv' })}
-  style={{ borderRadius: 999, padding: '0 12px' }}
->
-  ☕ Buy me a coffee
-</Button>
-
-
-</Footer>
-
+            <div style={{ marginBottom: 8 }}>
+              <a href="https://github.com/SpellboundScents/chatgpt" target="_blank" rel="noreferrer">
+                ChatGPT Desktop Application
+              </a> ©2022 lencx, ©2025 chirv
+            </div>
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => invoke('open_external', { url: 'https://buymeacoffee.com/chirv' })}
+              style={{ borderRadius: 999, padding: '0 12px' }}
+            >
+              ☕ Buy me a coffee
+            </Button>
+          </Footer>
         </Layout>
       </Layout>
     </ConfigProvider>
