@@ -1,10 +1,31 @@
 use std::{env, fs, path::{Path, PathBuf}};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Theme};
 use tauri::process;
 use tauri_plugin_updater::UpdaterExt;
 use tauri::Emitter; // <-- brings .emit() into scope for AppHandle/WebviewWindow
 use std::result::Result;
 
+#[tauri::command]
+pub fn set_theme_all(app: AppHandle, theme: String) -> Result<(), String> {
+  let t = theme.to_lowercase();
+  let native = match t.as_str() {
+    "dark" => Theme::Dark,
+    "light" => Theme::Light,
+    _ => Theme::Dark, // or Theme::Light/Theme::System as you prefer
+  };
+
+  // 1) Apply native theme to every window (affects core + config chrome)
+  for w in app.webview_windows().values() {
+    let _ = w.set_theme(Some(native));
+  }
+
+  // 2) Tell our React UI windows to update their AntD theme (payload-based)
+  for w in app.webview_windows().values() {
+    let _ = w.emit("menu-set-theme", &t);
+  }
+
+  Ok(())
+}
 
 // HOME dir (portable)
 fn user_home() -> PathBuf {

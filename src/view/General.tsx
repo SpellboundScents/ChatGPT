@@ -141,13 +141,13 @@ export default function General() {
               const v = String(e.target.value || 'system').toLowerCase();
               form.setFieldValue('theme', v);
 
-              // 1) call the global setter (immediate, no event plumbing needed)
-              (window as any).__setTheme?.(v);
+              // Flip native theme on ALL windows + broadcast payload
+              try { await invoke('set_theme_all', { theme: v }); } catch {}
 
-              // 2) also emit, in case you keep the event-based flow
+              // Also update this window’s React state immediately (belt & suspenders)
               try { await emit('menu-set-theme', v); } catch {}
 
-              console.log('[theme] General onChange ->', v);
+              console.log('[theme] onChange ->', v);
             }}
           >
             <Radio value="light">Light</Radio>

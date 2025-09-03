@@ -15,6 +15,7 @@ use tauri::{
 };
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::webview::PageLoadEvent;
+use crate::utils::set_theme_all;
 
 // ===== Loader overlay injectors (in-window, no extra windows) ===============
 const LOADER_INJECT_JS: &str = r#"
@@ -153,6 +154,7 @@ fn main() -> Result<()> {
       set_chat_conf,
       reset_chat_conf,
       open_external,
+      set_theme_all,
     ])
 
     // build + run (this returns Result<()>)
