@@ -74,8 +74,13 @@ Download the Linux installer of your choice once available.
   - `libayatana-appindicator3-dev`  
   - `librsvg2-dev`  
 
+  ```bash
+  bash prereq.sh
+  ```
+
 ### 🚀 Run Locally
 ```bash
 git clone https://github.com/SpellboundScents/ChatGPT.git
 cd ChatGPT
 pnpm install
+```
