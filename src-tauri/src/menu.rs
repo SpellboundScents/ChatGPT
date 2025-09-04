@@ -41,7 +41,6 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
   let chatgpt = Submenu::with_items(app, "ChatGPT", true, &[
     &PredefinedMenuItem::separator(app)?,
     &MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?,
-    &MenuItem::with_id(app, "donate", "☕ Buy Me a Coffee", true, None::<&str>)?,
     &PredefinedMenuItem::quit(app, None::<&str>)?,
   ])?;
 
@@ -50,13 +49,14 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     &MenuItem::with_id(app, "pref-open-config", "Control Center",  true, Some("Shift+Ctrl+G"))?,
     &MenuItem::with_id(app, "pref-restart",     "Restart ChatGPT", true, Some("Shift+Ctrl+R"))?,
     &MenuItem::with_id(app, "pref-awesome",     "Awesome ChatGPT", true, Some("Shift+Ctrl+A"))?,
+    &MenuItem::with_id(app, "pref-about",        "About Awesome", true, None::<&str>)?,
+
   ])?;
 
   // View
   let view = Submenu::with_items(app, "View", true, &[
-    &MenuItem::with_id(app, "reload", "Reload", true, Some("Ctrl+R"))?,
-    &MenuItem::with_id(app, "toggle-devtools", "Toggle DevTools", cfg!(debug_assertions), Some("Ctrl+Shift+I"))?,
     &MenuItem::with_id(app, "toggle-darkmode", "Toggle Dark Mode", true, None::<&str>)?,
+    &MenuItem::with_id(app, "reload", "Reload", true, Some("Ctrl+R"))?,
   ])?;
 
   // Help
@@ -117,6 +117,26 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
       let _ = app.emit("menu-toggle-dark", ());
     }
 
+   /*
+    "pref-awesome" => {
+      let _ = open_or_focus_config(app);
+      let _ = app.emit("open-awesome", ());
+    }
+
+    "pref-about" => {
+      let _ = app.emit("open-about", ());
+    } 
+
+    "reload" => {
+      if let Some(win) = app.get_webview_window("core") {
+        let _ = win.eval("window.location.reload()");
+      }
+    }
+
+    "pref-restart" => {
+      let _ = tauri::process::restart(&app.env());
+    }
+*/
     _ => {}
   }
 }
