@@ -30,72 +30,88 @@ jobs:
             target/release/*
 
   arch-pkg:
-    name: Arch PKGBUILD
     runs-on: ubuntu-latest
     needs: build-linux
     container:
       image: archlinux:latest
-      options: --privileged  # needed for makepkg in some environments
+      options: --privileged
+
+    env:
+      RUSTFLAGS: -Clink-arg=-fuse-ld=lld   # 👈 force LLD for clang in Arch
+
     steps:
       - name: Prepare pacman
         run: |
           sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel git fakeroot curl binutils tar gzip jq
+          pacman -S --noconfirm base-devel rust cargo git jq binutils fakeroot lld
+          # Tauri deps on Arch (names differ a bit)
+          pacman -S --noconfirm webkit2gtk gtk3 libayatana-appindicator librsvg
+
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: Ensure version from tag (fallback to git describe)
-        id: ver
+
+      # (Optional but robust) If your repo forces mold, rewrite it to lld
+      - name: Override mold to lld if present
         run: |
-          TAG="${GITHUB_REF_NAME:-}"
-          if [[ -z "$TAG" || "$TAG" != v* ]]; then
-            TAG=$(git describe --tags --always --dirty 2>/dev/null || echo "v0.0.0")
+          if [[ -f .cargo/config.toml ]]; then
+            sed -i 's/fuse-ld=mold/fuse-ld=lld/g' .cargo/config.toml
           fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-      - name: Generate PKGBUILD if missing (Rust cargo template)
+
+      - name: Determine version and binary name (from Cargo)
+        id: meta
         run: |
-          if [[ ! -f PKGBUILD ]]; then
-            APP_NAME="$(basename "$(pwd)")"
-            cat > PKGBUILD <<'EOF'
-          # Maintainer: Your Name <you@example.com>
-          pkgname=__APP_NAME__
+          VER="${GITHUB_REF_NAME:-}"
+          if [[ -z "$VER" || "$VER" != v* ]]; then
+            VER="0.0.0+$(git rev-parse --short HEAD)"
+          else
+            VER="${VER#v}"
+          fi
+          PKG_NAME="$(awk -F' *= *' '/^\[package\]/{f=1} f&&/^name *=/{gsub(/"/,"",$2); print $2; exit}' src-tauri/Cargo.toml)"
+          echo "ver=$VER" >> $GITHUB_OUTPUT
+          echo "pkg=$PKG_NAME" >> $GITHUB_OUTPUT
+          echo "bin=$PKG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Generate PKGBUILD
+        run: |
+          cat > PKGBUILD <<'EOF'
+          # Maintainer: CI <ci@example.invalid>
+          pkgname=__PKGNAME__
           pkgver=__PKGVER__
           pkgrel=1
-          pkgdesc="__DESC__"
+          pkgdesc="Tauri app"
           arch=('x86_64')
-          url="__URL__"
-          license=('MIT' 'Apache')
-          depends=()
-          makedepends=('rust' 'cargo')
-          source=("git+__GIT_URL__#tag=v${pkgver}")
-          md5sums=('SKIP')
+          url="https://github.com/__REPO__"
+          license=('custom')
+          depends=('gtk3' 'webkit2gtk' 'librsvg' 'libayatana-appindicator')
+          makedepends=('rust' 'cargo' 'git' 'lld')
+          source=()
+          md5sums=()
 
           build() {
-            cd "${srcdir}/${pkgname}"
-            cargo build --release --locked
+            cd "${srcdir}"
+            RUSTFLAGS="-Clink-arg=-fuse-ld=lld" cargo build --manifest-path src-tauri/Cargo.toml --release --locked
           }
 
           package() {
-            cd "${srcdir}/${pkgname}"
-            install -Dm755 "target/release/__BIN__" "${pkgdir}/usr/bin/__BIN__"
-            # Optional: man page, completions, desktop files, icons...
-            # install -Dm644 misc/__BIN__.1 "${pkgdir}/usr/share/man/man1/__BIN__.1"
+            cd "${srcdir}"
+            install -Dm755 "src-tauri/target/release/__BIN__" "${pkgdir}/usr/bin/__BIN__"
+            install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/__BIN__.desktop" <<DESK
+          [Desktop Entry]
+          Type=Application
+          Name=__PKGNAME__
+          Exec=__BIN__
+          Categories=Utility;
+          Terminal=false
+          DESK
           }
           EOF
-            DESC="$(jq -r '.package.description? // empty' Cargo.toml 2>/dev/null || echo '')"
-            BIN_NAME="$(jq -r '.bin[0].name? // empty' Cargo.toml 2>/dev/null)"
-            [[ -z "$BIN_NAME" ]] && BIN_NAME="$(basename "$(pwd)")"
-            sed -i "s|__APP_NAME__|$APP_NAME|g" PKGBUILD
-            sed -i "s|__PKGVER__|${{ steps.ver.outputs.tag#v }}|g" PKGBUILD
-            sed -i "s|__DESC__|${DESC:-$APP_NAME}|g" PKGBUILD
-            sed -i "s|__URL__|${{ github.server_url }}/${{ github.repository }}|g" PKGBUILD
-            sed -i "s|__GIT_URL__|${{ github.server_url }}/${{ github.repository }}.git|g" PKGBUILD
-            sed -i "s|__BIN__|$BIN_NAME|g" PKGBUILD
-          fi
-      - name: Show PKGBUILD
-        run: |
-          echo "---- PKGBUILD ----"
-          cat PKGBUILD
+          sed -i "s|__PKGNAME__|${{ steps.meta.outputs.pkg }}|g" PKGBUILD
+          sed -i "s|__PKGVER__|${{ steps.meta.outputs.ver }}|g" PKGBUILD
+          sed -i "s|__BIN__|${{ steps.meta.outputs.bin }}|g" PKGBUILD
+          sed -i "s|__REPO__|${{ github.repository }}|g" PKGBUILD
+          echo "---- PKGBUILD ----"; cat PKGBUILD
+
       - name: Build package with makepkg
         run: |
           useradd -m builder || true
@@ -103,37 +119,14 @@ jobs:
           sudo -u builder bash -lc "
             export CARGO_HOME=\$HOME/.cargo
             mkdir -p \$CARGO_HOME
-            # Install Rust toolchain inside container for build()
-            pacman -S --noconfirm rust
             makepkg -sf --noconfirm --clean --cleanbuild
           "
-      - name: Collect artifacts
-        run: |
-          ls -lah
-          echo "PACKAGES:"
-          ls -1 *.pkg.tar.* || true
+
       - name: Upload Arch package
         uses: actions/upload-artifact@v4
         with:
           name: arch-package
           path: "*.pkg.tar.*"
-
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: [build-linux, arch-pkg]
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: arch-package
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-binaries
-          path: dist
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
         with:
           files: dist/**
         env:
