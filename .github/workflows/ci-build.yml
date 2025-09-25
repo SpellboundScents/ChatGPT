@@ -1,9 +1,12 @@
-name: CI (Linux build)
+name: CI (Linux build + Arch package)
 
 on:
   push:
     branches: [ main ]
+    tags:
+      - "v*.*.*"
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-linux:
@@ -13,8 +16,10 @@ jobs:
       contents: read
 
     env:
-      # make Vite builds deterministic in CI
       NODE_ENV: production
+      # Force Rust to use lld so clang doesn't choke on -fuse-ld=mold
+      # (We also install lld below.)
+      RUSTFLAGS: -Clink-arg=-fuse-ld=lld
 
     steps:
       - name: Checkout
@@ -31,7 +36,8 @@ jobs:
             wget \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
-            librsvg2-dev
+            librsvg2-dev \
+            lld
 
       # Rust toolchain
       - name: Setup Rust
@@ -39,7 +45,7 @@ jobs:
         with:
           components: clippy
 
-      # Node + pnpm (with cache of the pnpm store)
+      # Node + pnpm
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -61,12 +67,10 @@ jobs:
       - name: Install JS deps
         run: pnpm install --frozen-lockfile
 
-      # Optional: verify Rust deps resolve (helps fail-fast on lock issues)
       - name: Cargo fetch
         working-directory: src-tauri
         run: cargo fetch
 
-      # Build (your tauri.conf.json already defines beforeBuildCommand)
       - name: Build Tauri (Linux)
         run: pnpm tauri build
 
@@ -77,5 +81,129 @@ jobs:
           path: |
             src-tauri/target/release/bundle/**/*.AppImage
             src-tauri/target/release/bundle/deb/**/*.deb
+            src-tauri/target/release/bundle/rpm/**/*.rpm
             src-tauri/target/release/bundle/**/latest.json
           if-no-files-found: warn
+
+  arch-pkg:
+    name: Build Arch package (.pkg.tar.zst)
+    runs-on: ubuntu-latest
+    needs: build-linux
+    # Use a real Arch userspace so makepkg behaves correctly
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Prepare pacman
+        run: |
+          sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel rust cargo git jq binutils fakeroot
+          # Tauri deps on Arch (names differ slightly from Debian/Ubuntu)
+          pacman -S --noconfirm webkit2gtk gtk3 libayatana-appindicator librsvg
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Determine version and binary name (from Cargo)
+        id: meta
+        run: |
+          # Discover version from tag if present, otherwise 0.0.0+git
+          VER="${GITHUB_REF_NAME:-}"
+          if [[ -z "$VER" || "$VER" != v* ]]; then
+            VER="0.0.0+$(git rev-parse --short HEAD)"
+          else
+            VER="${VER#v}"
+          fi
+          # Get the Rust package/bin name from src-tauri/Cargo.toml
+          PKG_NAME="$(awk -F' *= *' '/^\[package\]/{f=1} f&&/^name *=/{gsub(/"|"/,"",$2); print $2; exit}' src-tauri/Cargo.toml)"
+          BIN_NAME="$PKG_NAME"
+          echo "ver=$VER" >> $GITHUB_OUTPUT
+          echo "bin=$BIN_NAME" >> $GITHUB_OUTPUT
+          echo "pkg=$PKG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Generate PKGBUILD (builds from checked-out source)
+        run: |
+          cat > PKGBUILD <<'EOF'
+          # Maintainer: CI <ci@example.invalid>
+          pkgname=__PKGNAME__
+          pkgver=__PKGVER__
+          pkgrel=1
+          pkgdesc="Tauri app"
+          arch=('x86_64')
+          url="https://github.com/__REPO__"
+          license=('custom')
+          depends=('gtk3' 'webkit2gtk' 'librsvg' 'libayatana-appindicator')
+          makedepends=('rust' 'cargo' 'git')
+          # We build from the current working directory; no sources to fetch.
+          source=()
+          md5sums=()
+
+          build() {
+            cd "${srcdir}"
+            # Use the repo root; Tauri project lives in src-tauri
+            RUSTFLAGS="-Clink-arg=-fuse-ld=lld" cargo build --manifest-path src-tauri/Cargo.toml --release --locked
+          }
+
+          package() {
+            cd "${srcdir}"
+            install -Dm755 "src-tauri/target/release/__BIN__" "${pkgdir}/usr/bin/__BIN__"
+            # Optional: desktop file + icon if you have them in the repo
+            if [[ -f "src-tauri/tauri.conf.json" ]]; then
+              # Example desktop entry (edit to match your app)
+              install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/__BIN__.desktop" <<DESK
+          [Desktop Entry]
+          Type=Application
+          Name=__PKGNAME__
+          Exec=__BIN__
+          Categories=Utility;
+          Terminal=false
+          DESK
+            fi
+          }
+          EOF
+          sed -i "s|__PKGNAME__|${{ steps.meta.outputs.pkg }}|g" PKGBUILD
+          sed -i "s|__PKGVER__|${{ steps.meta.outputs.ver }}|g" PKGBUILD
+          sed -i "s|__BIN__|${{ steps.meta.outputs.bin }}|g" PKGBUILD
+          sed -i "s|__REPO__|${{ github.repository }}|g" PKGBUILD
+
+          echo "---- PKGBUILD ----"
+          cat PKGBUILD
+
+      - name: Build package with makepkg
+        run: |
+          useradd -m builder || true
+          chown -R builder:builder .
+          sudo -u builder bash -lc "
+            export CARGO_HOME=\$HOME/.cargo
+            mkdir -p \$CARGO_HOME
+            makepkg -sf --noconfirm --clean --cleanbuild
+          "
+
+      - name: Upload Arch package
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: "*.pkg.tar.*"
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build-linux, arch-pkg]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-bundles
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-package
+          path: dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
